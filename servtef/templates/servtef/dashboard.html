@@ -1,0 +1,13 @@
+<!-- servtef/templates/servtef/dashboard.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div>
+    {% if not user.is_authenticated %}
+       <a href="{% url 'login' %}">Login</a>
+    {% endif %}
+</div>
+
+{% endblock content %}

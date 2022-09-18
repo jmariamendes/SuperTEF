@@ -1,0 +1,42 @@
+<!--servtef/templates/servtef/inclui.loja.html-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    label, input {
+        display: block;
+    }
+    span.helptext {
+        display: none;
+    }
+</style>
+
+<div class="column is-one-third"></div>
+<div class="column is-one-third">
+    <div class="box">
+        <div class="block">
+            <h1 class="title is-5 has-text-centered">
+                {{ titulo }}
+            </h1>
+        <form method="post">
+            {% csrf_token %}
+            {{form}}
+            <p class="is-size-5 has-text-centered"> {{msg}}
+            </p>
+            {% if oper == "altera" %}
+                <button class="button is-info mt-5 is-centered"
+                                    type="submit">Alterar
+                </button>
+            {% else %}
+                <button class="button is-danger mt-5 is-centered"
+                                    type="submit">Excluir
+                </button>
+            {% endif %}
+        </form>
+        </div>
+    </div>
+</div>
+<div class="column is-one-third"></div>
+{% endblock %}
+

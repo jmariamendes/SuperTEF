@@ -1,0 +1,202 @@
+<!-- servtef/templates/base.html -->
+
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Include the Bulma CSS framework for styling -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <title>Zwitter</title>
+    <script src="https://kit.fontawesome.com/d3fd653aab.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <a href="{% url 'servtef:dashboard' %} ">
+    <section class="hero is-small is-info mt-7">
+            <div class="hero-head is-small">
+                <div class="block">
+                    <a href="{% url 'servtef:dashboard' %}">
+                    <p class="title is-1 is-size-3 has-text-centered">SuperTEF
+                        <span class="is-small is-size-5"> - alem dos limites do cartão </span>
+                    </p>
+                    <p></p>
+                    </a>
+                </div>
+            </div>
+            {% if user.is_authenticated %}
+            <div class="hero-foot">
+                <nav class="navbar" role="navigation" aria-label="main navigation">
+                    <div id="navbarPrincipal" class="navbar-menu">
+                        <div class="navbar-start">
+                          <a class="navbar-item" href="{% url 'servtef:dashboard' %}">
+                            Home
+                          </a>
+                          {% if userTEF.perfil_user == 1 %}
+                              <a class="navbar-item">
+                                Empresa
+                              </a>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Lojas
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                <a class="navbar-item is-active" href="{% url 'servtef:incluiloja' %}">
+                                    Inclusão
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:alteraexcluiloja' 'altera' %}" >
+                                    Alteração
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:alteraexcluiloja' 'exclui' %}">
+                                    Exclusão
+                                </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 or userTEF.perfil_user == 3 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                PDV
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                    <a class="navbar-item is-active" href="{% url 'servtef:incluipdv' %}">
+                                        Inclusão
+                                    </a>
+                                    <a class="navbar-item is-active" href="{% url 'servtef:listapdv' 'alt' %}">
+                                        Alteração
+                                    </a>
+                                    <a class="navbar-item is-active" href="{% url 'servtef:listapdv' 'del' %}" >
+                                        Exclusão
+                                    </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Adquirente
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                    <a class="navbar-item is-active" href="{% url 'servtef:incluiadiq' %}">
+                                        Inclusão
+                                    </a>
+                                    <a class="navbar-item is-active" href="{% url 'servtef:listaadiq' %}">
+                                        Alteração
+                                    </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Número Lógico
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                    <a class="navbar-item is-active" href="{% url 'servtef:incluinumlogico' %}">
+                                        Inclusão
+                                    </a>
+                                    <a class="navbar-item is-active" href="{% url 'servtef:listanumlogico' 'log'%}">
+                                        Alteração
+                                    </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Bandeira
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                    <a class="navbar-item is-active" href="{% url 'servtef:incluibandeira' %}">
+                                        Inclusão
+                                    </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Roteamentos
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                    <a class="navbar-item is-active" href="{% url 'servtef:listanumlogico' 'rot'%}">
+                                        Inclusão/Alterção
+                                    </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 or userTEF.perfil_user == 3 %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Usuários
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                <a class="navbar-item is-active" href="{% url 'servtef:register' %}">
+                                    Inclusão
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:usuarios' 'del' %}">
+                                    Exclusão
+                                </a>
+                              </div>
+                          </div>
+                          {% endif %}
+                          <a class="navbar-item">
+                            Relatórios
+                          </a>
+                        </div>
+                        {% if user.is_authenticated %}
+                        <div class="navbar-end ">
+                          <!--<div class="button is-info">-->
+                            <div class="navbar-item has-dropdown is-hoverable">
+                                <a class="navbar-link is-active">
+                                    <a class="button is-light is-outlined is-hoverable is-rounded">
+                                        <span class="icon">
+                                            <i class="fa-solid fa-user-plus"></i>
+                                        </span>
+                                    </a>
+                                </a>
+                                <div class="navbar-dropdown is-boxed">
+                                    <hr class="navbar-divider">
+                                    <a class="navbar-item is-hoverable" >
+                                        {{userTEF.user|capfirst}}
+                                    </a>
+                                    <hr class="navbar-divider">
+                                    <hr class="navbar-divider">
+                                    <a class="navbar-item is-hoverable" >
+                                        {{userTEF.loja.nomeLoja}}
+                                    </a>
+                                    <hr class="navbar-divider">
+                                    <a class="navbar-item ">
+                                    <a class="button is-info is-light is-outlined is-hoverable is-rounded"
+                                        href="{% url 'servtef:logout' %}">
+                                        <span class="icon">
+                                            <i class="fa-solid fa-person-walking-arrow-right"></i> Sair
+                                        </span>
+                                    </a>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </nav>
+            </div>
+            {% endif %}
+    </section>
+    </a>
+    <div class="container">
+        <div class="columns">
+
+            {% block content %}
+
+            {% endblock content %}
+        </div>
+    </div>
+</body>
+</html>

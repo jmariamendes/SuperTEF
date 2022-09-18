@@ -1,0 +1,33 @@
+<!--dwiter/templates/dwiter/convite_enviado.html-->
+{% extends "base.html" %}
+
+
+{% block content %}
+
+<style>
+    label, input {
+        display: block;
+    }
+    span.helptext {
+        display: none;
+    }
+</style>
+
+<div class="column is-one-third"></div>
+<div class="column is-one-third">
+    <div class="box">
+
+        <div class="block">
+            <div class="notification is-warning">
+                <a href="{% url 'servtef:dashboard' %} ">
+                    <p class="is-size-5 has-text-centered"> {{ msg}}
+                    </p>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+<div class="column is-one-third"></div>
+
+{% endblock %}

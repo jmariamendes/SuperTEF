@@ -1,0 +1,45 @@
+<!-- servtef/templates/servtef/usuarios.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="column is-one-third"></div>
+
+<div class="column is-one-third">
+  <div class="box">
+    <h1 class="title is-4 has-text-centered">
+      {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 %}
+          Usuários da empresa {{userTEF.empresa.nomeEmp}}
+      {% else %}
+          Usuários da loja {{userTEF.loja.nomeLoja}}
+      {% endif %}
+    </h1>
+  </div>
+
+  {% for usuario in usuarios %}
+
+    <div class="block">
+      <div class="card">
+        <a href="{% url 'servtef:excluiuser' usuario.user_id %}">
+        <div class="message is-small">
+          <div class="card-content">
+            <div class="media-content">
+                <p class="title is-5">
+                  {{ usuario.user|capfirst }}  - {{ usuario.loja.nomeLoja }}
+                </p>
+            </div>
+          </div>
+        </div>
+        </a>
+
+      </div>
+    </div>
+
+
+  {% endfor %}
+
+</div>
+<div class="column is-one-third"></div>
+
+{% endblock content %}

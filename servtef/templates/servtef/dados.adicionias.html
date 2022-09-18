@@ -1,0 +1,34 @@
+<!--servtef/templates/servtef/dados.adicionais.html-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    label, input {
+        display: block;
+    }
+    span.helptext {
+        display: none;
+    }
+</style>
+
+<div class="column is-one-third"></div>
+<div class="column is-one-third">
+    <div class="box">
+        <div class="block">
+            <h1 class="title is-5 has-text-centered">
+                Dados adicionais do usuário {{usuario.username}}
+            </h1>
+        <form method="post">
+            {% csrf_token %}
+            {{form}}
+            <button class="button is-info mt-5 has-text-centered"
+                                type="submit">Enviar
+            </button>
+        </form>
+        </div>
+    </div>
+</div>
+<div class="column is-one-third"></div>
+{% endblock %}
+

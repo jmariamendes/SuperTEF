@@ -1,0 +1,49 @@
+<!-- servtef/templates/servtef/lista.PDV.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="column is-one-third"></div>
+
+<div class="column is-one-third">
+  <div class="box">
+    <h1 class="title is-4 has-text-centered">
+      {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 %}
+          PDV´s da empresa {{userTEF.empresa.nomeEmp}}
+      {% else %}
+          PDV´s da loja {{userTEF.loja.nomeLoja}}
+      {% endif %}
+    </h1>
+  </div>
+
+  {% for pdv in pdvs %}
+
+    <div class="block">
+      <div class="card">
+        {% if operacao == "del" %}
+            <a href="{% url 'servtef:excluipdv' pdv.id %}">
+        {% else %}
+            <a href="{% url 'servtef:alterapdv' pdv.id %}">
+        {% endif %}
+        <div class="message is-small">
+          <div class="card-content">
+            <div class="media-content">
+                <p class="title is-5">
+                  {{ pdv.codPDV }}  - {{ pdv.loja.nomeLoja }}
+                </p>
+            </div>
+          </div>
+        </div>
+        </a>
+
+      </div>
+    </div>
+
+
+  {% endfor %}
+
+</div>
+<div class="column is-one-third"></div>
+
+{% endblock content %}

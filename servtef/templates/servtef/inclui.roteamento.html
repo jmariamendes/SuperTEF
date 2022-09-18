@@ -1,0 +1,40 @@
+<!-- servtef/templates/servtef/inclui.roteamento.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<style>
+    label, input {
+        display: block;
+    }
+    span.helptext {
+        display: none;
+    }
+</style>
+
+<div class="column is-one-third"></div>
+<div class="column is-one-third">
+
+   <div class="box">
+        <div class="block">
+            <h1 class="title is-3 has-text-centered">
+                Informe os roteamentos para a loja {{loja.nomeLoja}}
+            </h1>
+        </div>
+
+    <form method="post">
+    {% csrf_token %}
+        {{form}}
+        <p class="is-size-5 has-text-centered has-text-warning-light"> <strong> {{msg}}</strong>
+            </p>
+        <button class="button is-info mt-5 has-text-centered"
+                                type="submit">Enviar
+        </button>
+    </form>
+   </div>
+</div>
+
+<div class="column is-one-third"></div>
+
+{% endblock content %}
