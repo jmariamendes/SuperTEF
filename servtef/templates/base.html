@@ -10,7 +10,7 @@
     <!-- Include the Bulma CSS framework for styling -->
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
-    <title>Zwitter</title>
+    <title>SuperTEF</title>
     <script src="https://kit.fontawesome.com/d3fd653aab.js" crossorigin="anonymous"></script>
 </head>
 
@@ -36,7 +36,7 @@
                             Home
                           </a>
                           {% if userTEF.perfil_user == 1 %}
-                              <a class="navbar-item">
+                              <a class="navbar-item" href="{% url 'servtef:listaempresa' userTEF.empresa.codEmp %}">
                                 Empresa
                               </a>
                           {% endif %}
@@ -145,9 +145,33 @@
                               </div>
                           </div>
                           {% endif %}
-                          <a class="navbar-item">
-                            Relatórios
+                          {% if userTEF.perfil_user == 1 or userTEF.perfil_user == 2 or userTEF.perfil_user == 3 %}
+                          <a class="navbar-item" href="{% url 'servtef:selecionapendencias' %}">
+                                Tratar Pendências
                           </a>
+                          {% endif %}
+                          <div class="navbar-item has-dropdown is-hoverable">
+                              <a class="navbar-link is-active">
+                                Relatórios
+                              </a>
+                              <div class="navbar-dropdown is-boxed">
+                                <a class="navbar-item is-active" href="{% url 'servtef:selecionaregistros' %}">
+                                    Transações
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:listausuarios' %}" >
+                                    Usuários
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:listalojas' 1 'lojas' %}" >
+                                    Lojas
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:listalojas' 1 'pdvs' %}" >
+                                    PDVs
+                                </a>
+                                <a class="navbar-item is-active" href="{% url 'servtef:relatorioadiq' %}" >
+                                    Adquirentes
+                                </a>
+                              </div>
+                          </div>
                         </div>
                         {% if user.is_authenticated %}
                         <div class="navbar-end ">

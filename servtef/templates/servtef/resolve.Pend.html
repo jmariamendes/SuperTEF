@@ -1,0 +1,40 @@
+<!--servtef/templates/servtef/resolve.Pend.html-->
+
+{% extends 'base.html' %}
+
+{% block content %}
+<style>
+    label, input {
+        display: block;
+    }
+    span.helptext {
+        display: none;
+    }
+</style>
+
+<div class="column is-one-third"></div>
+<div class="column is-one-third">
+    <div class="box">
+        <div class="block">
+            <h1 class="title is-5 has-text-centered">
+                Tratamento de pendência
+            </h1>
+        <form method="post">
+            {% csrf_token %}
+            {{form}}
+            <p class="is-size-5 has-text-centered has-text-warning-light">" "
+            </p>
+            <div class="buttons has-addons is-centered">
+                <p></p>
+
+                 <button class="button is-success" name="opcao" value="confirma">Confirma</button>
+                 <button class="button is-warning" name="opcao" value="desfaz">Desfaz</button>
+                 <button class="button is-danger" name="opcao" value="cancela">Cancela</button>
+            </div>
+        </form>
+        </div>
+    </div>
+</div>
+<div class="column is-one-third"></div>
+{% endblock %}
+

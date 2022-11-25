@@ -1,0 +1,104 @@
+<!-- servtef/templates/servtef/lista.DadosLojas.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+  <div class="column is-half">
+  <a href="{% url 'servtef:listalojas' page 'lojas'%}">
+    <div class="box">
+        <p></p>
+        <p class="title is-5 has-text-centered">
+        Adquirentes da loja {{ nomeloja }}
+        </p>
+    </div>
+
+    {% for adiq in adiqs %}
+
+    <div class="message is-info">
+
+    <div class="field is-horizontal is-normal">
+            <div class="field-label">
+                <label class="label">Adquirente: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ adiq.adiq.nomeAdiq }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Número lógico: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ adiq.numlogico }} </label>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+    {% endfor %}
+  </a>
+  </div>
+
+
+
+  <div class="column is-half">
+  <a href="{% url 'servtef:listalojas' page 'lojas'%}">
+    <div class="box">
+        <p></p>
+        <p class="title is-5 has-text-centered">
+        Bandeiras da loja {{ nomeloja }}
+        </p>
+    </div>
+
+    {% for band in bands %}
+
+    <div class="message is-info">
+
+    <div class="field is-horizontal is-normal">
+            <div class="field-label">
+                <label class="label">Bandeira: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ band.bandeira.nomeBan }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Adquirente primário: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ band.adiq.nomeAdiq }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Adquirente secundário: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ band.adiq2.nomeAdiq }} </label>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+    {% endfor %}
+  </a>
+  </div>
+
+
+{% endblock content %}

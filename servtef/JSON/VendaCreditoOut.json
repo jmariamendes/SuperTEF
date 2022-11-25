@@ -1,0 +1,14 @@
+{
+   "headerOut": {
+      "codErro":"inteiro",
+      "mensagem": "string"
+   },
+   "codResp": "inteiro",
+   "bandeira": "string",
+   "adquirente": "<string>",
+   "codAut": "<string>",
+   "NSUTef": "<inteiro>",
+   "NSUHost": "<inteiro>",
+   "dataHoraTrans": "<timestamp>",
+   "cupomTrans": "<string>"
+}

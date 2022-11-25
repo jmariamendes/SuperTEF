@@ -1,0 +1,9 @@
+{
+   "headerIn": {
+      "transação": "AberturaPDV",
+      "empresa": 1,
+      "loja": 2,
+      "pdv": 2
+   },
+   "usuario": "janete"
+}

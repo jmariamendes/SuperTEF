@@ -1,0 +1,149 @@
+<!-- servtef/templates/servtef/lista.Lojas.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+<div class="column is-one-half">
+  <div class="box">
+    <h1 class="title is-4 has-text-centered">
+          Selecione a loja
+    </h1>
+  </div>
+
+{% if paginacao %} <!--- Exibe todas as lojas da empresa e faz paginação --->
+
+  {% for loja in page_obj %}
+
+    <div class="message is-info">
+    {% if operacao == "lojas" %}
+        <a href="{% url 'servtef:listadadosloja' loja.codLoja page_obj.number%}">
+    {% else %}
+        <a href="{% url 'servtef:relatoriopdv' loja.codLoja page_obj.number%}">
+    {% endif %}
+
+    <div class="field is-horizontal is-normal">
+            <div class="field-label">
+                <label class="label">Número: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ loja.codLoja }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Nome: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ loja.nomeLoja }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">CNPJ: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ loja.CNPJ }} </label>
+                    </div>
+                </div>
+            </div>
+
+    </div>
+    </a>
+    </a>
+    </div>
+  {% endfor %}
+
+{% block pagination %}
+    <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+        {% if page_obj.has_previous %}
+            <a class="pagination-previous"
+               href="{% url 'servtef:listalojas' page_obj.previous_page_number 'lojas'%}">Anterior</a>
+        {% else %}
+            <a class="pagination-previous is-disabled">Anterior</a>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+            <a class="pagination-next"
+               href="{% url 'servtef:listalojas' page_obj.next_page_number 'lojas'%}">Próxima</a>
+        {% else %}
+            <a class="pagination-next is-disabled">Próxima</a>
+        {% endif %}
+
+        {% for page_number in page_obj.paginator.page_range %}
+            <ul class="pagination-list">
+                <li>
+                    {% if page_number != page_obj.number %}
+                        <a class="pagination-link"
+                           href="{% url 'servtef:listalojas' page_number 'lojas'%}">
+                        <!---<a class="{% if page_number == page_obj.number %}aria-current{% endif %}">--->
+                        {{page_number}}
+                        </a>
+                    {% else %}
+                        <a class="pagination-link is-current"
+                           href="{% url 'servtef:listalojas' page_number 'lojas'%}">
+                        {{page_number}}
+                        </a>
+                    {% endif %}
+                </li>
+            </ul>
+        {% endfor %}
+    </nav>
+{% endblock %}
+{% else %} <!--- Exibe somente uma loja, pois o usuário não é admin nem corporativo --->
+    <div class="message is-info">
+    {% if operacao == "lojas" %}
+        <a href="{% url 'servtef:listadadosloja' loja.codLoja 1%}">
+    {% else %}
+        <a href="{% url 'servtef:relatoriopdv' loja.codLoja 1%}">
+    {% endif %}
+    <div class="field is-horizontal is-normal">
+            <div class="field-label">
+                <label class="label">Número: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ loja.codLoja }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Nome: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ loja.nomeLoja }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">CNPJ: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ loja.CNPJ }} </label>
+                    </div>
+                </div>
+            </div>
+
+    </div>
+    </a>
+    </div>
+{% endif %}
+</div>
+
+{% endblock content %}

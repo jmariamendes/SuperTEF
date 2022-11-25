@@ -1,0 +1,155 @@
+<!-- servtef/templates/servtef/lista.Pendencias.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="column is-one-half">
+  <div class="box">
+    <h1 class="title is-4 has-text-centered">
+          Transações
+    </h1>
+  </div>
+
+  {% for log in page_obj %}
+
+    <div class="message is-info">
+
+    <a href="{% url 'servtef:exibereglog' log.NSU_TEF %}">
+    <div class="field is-horizontal is-small">
+            <div class="field-label is-small">
+                <label class="label">NSU: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small">{{ log.NSU_TEF }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label is-small">
+                <label class="label">Loja: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.codLoja }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label is-small">
+                <label class="label">PDV: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.codPDV }} </label>
+                    </div>
+                </div>
+            </div>
+
+           <div class="field-label is-small">
+                <label class="label">Data: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.dataLocal }} </label>
+                    </div>
+                </div>
+            </div>
+
+           <div class="field-label is-small">
+                <label class="label">Valor: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.valorTrans }} </label>
+                    </div>
+                </div>
+            </div>
+
+           <div class="field-label is-small">
+                <label class="label">Status: </label>
+           </div>
+           <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.statusTRN }} </label>
+                    </div>
+                </div>
+           </div>
+
+           <div class="field-label is-small">
+                <label class="label">Adiq: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.nomeAdiq }} </label>
+                    </div>
+                </div>
+            </div>
+
+           <div class="field-label is-small">
+                <label class="label">Ban: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="input is-small ">{{ log.nomeBan }} </label>
+                    </div>
+                </div>
+            </div>
+
+       </div>
+    </a>
+    </div>
+
+  {% endfor %}
+
+{% block pagination %}
+    <nav class="pagination is-centered" role="navigation" aria-label="pagination">
+        {% if page_obj.has_previous %}
+            <a class="pagination-previous"
+               href="{% url 'servtef:listaregistroslog' page_obj.previous_page_number%}">Anterior</a>
+        {% else %}
+            <a class="pagination-previous is-disabled">Anterior</a>
+        {% endif %}
+
+        {% if page_obj.has_next %}
+            <a class="pagination-next"
+               href="{% url 'servtef:listaregistroslog' page_obj.next_page_number %}">Próxima</a>
+        {% else %}
+            <a class="pagination-next is-disabled">Próxima</a>
+        {% endif %}
+
+        {% for page_number in page_obj.paginator.page_range %}
+            <ul class="pagination-list">
+                <li>
+                    {% if page_number != page_obj.number %}
+                        <a class="pagination-link"
+                           href="{% url 'servtef:listaregistroslog' page_number%}">
+                        <!---<a class="{% if page_number == page_obj.number %}aria-current{% endif %}">--->
+                        {{page_number}}
+                        </a>
+                    {% else %}
+                        <a class="pagination-link is-current"
+                           href="{% url 'servtef:listaregistroslog' page_number%}">
+                        {{page_number}}
+                        </a>
+                    {% endif %}
+                </li>
+            </ul>
+        {% endfor %}
+    </nav>
+{% endblock %}
+
+</div>
+
+
+
+{% endblock content %}

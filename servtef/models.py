@@ -10,6 +10,7 @@ class Empresa(models.Model):
     codEmp = models.IntegerField(primary_key=True)
     nomeEmp = models.CharField(max_length=50)
     CNPJ = models.CharField(max_length=14)
+    ultimoNSU = models.IntegerField(default=0)
 
 
 class Loja(models.Model):
@@ -31,14 +32,20 @@ class PDV(models.Model):
     )
     UsuarioAtivo = models.IntegerField(null=True)  # Usuario logado no PDV no momento
     StatusPDV = models.BooleanField(default=False)  # inicializado/ativo/inativo
-
+    LastLogin = models.DateTimeField(null=True) # data/hora do último login
     # Transações habilitadas para este PDV
 
+    TransDigitado = models.BooleanField(default=False)
     TransVendaCreditoVista = models.BooleanField(default=False)
     TransVendaCreditoParc = models.BooleanField(default=False)
     TransVendaCreditoSemJuros = models.BooleanField(default=False)
     TransVendaDebito = models.BooleanField(default=False)
     TransCancelamento = models.BooleanField(default=False)
+
+
+class PerfilUsuario(models.Model):
+    codPerfil = models.IntegerField(primary_key=True)
+    nomePerfil = models.CharField (max_length=20)
 
 
 class UsuarioTEF(models.Model):
@@ -54,6 +61,9 @@ class UsuarioTEF(models.Model):
             ('1', 'Admin'), ('2', 'Corporativo'), ('3', 'Loja'), ('4', 'PDV')]'''
 
     perfil_user = models.IntegerField()
+    nome_perfil = models.ForeignKey(
+        PerfilUsuario, related_name="perfiluser", on_delete=models.CASCADE, null=True
+    )
 
     def __str__(self):
         return self.user.username
@@ -107,4 +117,35 @@ class Roteamento(models.Model):
     adiq2 = models.ForeignKey(
         Adquirente, related_name="rotadiq2", on_delete=models.CASCADE
     )
+
+
+class LogTrans(models.Model):
+    NSU_TEF = models.IntegerField(primary_key=True)
+    dataLocal = models.DateField()
+    horaLocal = models.TimeField()
+    NSU_HOST = models.IntegerField()
+    dataHoraHost = models.DateTimeField()
+    codEmp = models.IntegerField()
+    codLoja = models.IntegerField()
+    codPDV = models.IntegerField()
+    numLogico = models.CharField(max_length=20)
+    codTRN = models.CharField(max_length=20)
+    numParcelas = models.IntegerField(null=True)
+    statusTRN = models.CharField(max_length=20)
+    codResp = models.IntegerField()
+    msgResp=models.CharField(max_length=50)
+    numCartao = models.CharField(max_length=20)
+    valorTrans = models.DecimalField(decimal_places=2, max_digits=10)
+    nomeBan = models.CharField(max_length=50, null=True)
+    nomeAdiq = models.CharField(max_length=50, null=True)
+    NSU_ConfDesfCanc = models.IntegerField(null=True)
+    dataHoraConfDesfCanc = models.DateTimeField(null=True)
+    NSU_Canc = models.IntegerField(null=True)
+    dataHoraCanc = models.DateTimeField(null=True)
+
+    def __str__(self):
+        return (
+            f"({self.dataLocal:%Y-%m-%d})"
+        )
+
 

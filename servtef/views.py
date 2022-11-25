@@ -1,12 +1,17 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.models import User
 from django.db.models import Q
-from django.views.generic import ListView, CreateView, UpdateView, DeleteView
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView
 from django.urls import reverse, reverse_lazy
 from django.forms import modelformset_factory
+from django.core.paginator import Paginator
+
+import datetime
 
 from . import forms
-from .models import UsuarioTEF, Loja, PDV, Bandeira, Adquirente, NumLogico, Roteamento
+from .models import UsuarioTEF, Empresa, Loja, PDV, LogTrans, Bandeira, Adquirente, NumLogico, Roteamento, PerfilUsuario
+
+parametros = {}
 
 ''' View da tela inicial/dashboard:
         - Template - dashboard.html'''
@@ -48,40 +53,46 @@ def register(request):
 
 
 def dados_adicionais(request, pk):
-
-    PERFIL_LOJA = [('3', 'Loja'), ('4', 'PDV')]
-    PERFIL_CORPORATIVO = [('2', 'Corporativo'),('3', 'Loja'), ('4', 'PDV')]
+    PERFIL_LOJA = [('3', 'Gerente Loja'), ('4', 'Operador PDV')]
+    PERFIL_CORPORATIVO = [('2', 'Corporativo'), ('3', 'Gerente Loja'), ('4', 'Operador PDV')]
     LISTA_LOJAS = []
+    PERFIL_USUARIO = []
     aux_loja = []
-    new_user = User.objects.get(pk=pk) # dados iniciais do usuário a ser incluido
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    aux = []
+    new_user = User.objects.get(pk=pk)  # dados iniciais do usuário a ser incluido
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
+    form_user = forms.DadosAdicionaisUsuarioForm()
 
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo
-        form_user = forms.DadosAdicionaisUsuarioForm()
-        if userTEF.perfil_user == 2:
-            form_user.fields['perfil_user'].choices = PERFIL_CORPORATIVO
+    """ Monta a tabela de perfil, de acordo com o perfil do usuário que está incluindo """
+
+    lista_perfil = PerfilUsuario.objects.filter(codPerfil__gte=userTEF.perfil_user)
+    for perfil in lista_perfil:
+        aux.append(str(perfil.codPerfil))
+        aux.append(perfil.nomePerfil)
+        PERFIL_USUARIO.append(aux[:])
+        aux.clear()
+    form_user.fields['perfil_user'].choices = PERFIL_USUARIO
+
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
 
         ''' Seleciona todas as lojas pertencentes à empresa, para montar a lista de lojas disponíveis,
             para a qual o novo usuário será relacionado '''
 
-        lojas = Loja.objects.filter (empresa=userTEF.empresa)
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
         for loja in lojas:
-            if loja.codLoja != 9999: # não inclui a loja Dummy
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
                 aux_loja.append(str(loja.codLoja))
                 aux_loja.append(loja.nomeLoja)
                 LISTA_LOJAS.append(aux_loja[:])
                 aux_loja.clear()
-
         form_user.fields['loja'].choices = LISTA_LOJAS
         codloja = 0
-    else: # usuário loja só pode criar usuário da propria loja
-        loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+    else:  # usuário loja só pode criar usuário da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
         aux_loja.append(str(loja.codLoja))
         aux_loja.append(loja.nomeLoja)
         LISTA_LOJAS.append(aux_loja[:])
-        form_user = forms.DadosAdicionaisUsuarioForm()
         form_user.fields['loja'].choices = LISTA_LOJAS
-        form_user.fields['perfil_user'].choices = PERFIL_LOJA
         codloja = userTEF.loja
 
     if request.method == "GET":
@@ -91,18 +102,20 @@ def dados_adicionais(request, pk):
                       )
     elif request.method == "POST":
         form = forms.DadosAdicionaisUsuarioForm(request.POST)
-        #if form.is_valid():
+        # if form.is_valid():
         data = request.POST
-        perfil_user=int(data.get("perfil_user"))
+        perfil_user = int(data.get("perfil_user"))
         if codloja == 0:
-            if perfil_user == 1 or perfil_user == 2: # usuario admin e corporativo são colocados em uma loja ficticia, 9999
-                loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=9999)
+            if perfil_user == 1 or perfil_user == 2:  # usuario admin e corporativo são colocados em uma loja ficticia, 9999
+                loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=9999)
             else:
-                loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=int(data.get("loja")))
+                loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=int(data.get("loja")))
+        nome_perfil = PerfilUsuario.objects.get(codPerfil=int(data.get("perfil_user")))
         dados_usuario = UsuarioTEF(user=new_user,
                                    empresa=userTEF.empresa,
                                    loja=loja,
-                                   perfil_user=int(data.get("perfil_user"))
+                                   perfil_user=int(data.get("perfil_user")),
+                                   nome_perfil=nome_perfil
                                    )
         dados_usuario.save()
         return render(request, "servtef/msg.generica.html", {"msg": "Inclusão de usuario realizada com sucesso"})
@@ -114,14 +127,14 @@ def dados_adicionais(request, pk):
 
 
 def usuarios(request, oper):
+    userTEF = UsuarioTEF.objects.get(
+        user=request.user)  # dados adicionais do usuario que está fazendo a alteração/exclusão
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados adicionais do usuario que está fazendo a alteração/exclusão
-
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo,exibe todos os usuários da empresa
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo,exibe todos os usuários da empresa
         lista_usuarios = UsuarioTEF.objects.filter(Q(empresa=userTEF.empresa) &
                                                    Q(perfil_user__gt=userTEF.perfil_user)
                                                    ).order_by('loja')
-    else: # usuario de uma loja
+    else:  # usuario de uma loja
         lista_usuarios = UsuarioTEF.objects.filter(Q(loja=userTEF.loja) &
                                                    Q(perfil_user__gt=userTEF.perfil_user)
                                                    ).order_by('user')  # exibe todos os usuários da loja
@@ -138,8 +151,7 @@ def usuarios(request, oper):
 
 
 def exclui_user(request, pk):
-
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados adicionais do usuario que está fazendo a exclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados adicionais do usuario que está fazendo a exclusão
     userExc = User.objects.get(pk=pk)
 
     if request.method == "GET":
@@ -148,11 +160,94 @@ def exclui_user(request, pk):
                       )
     elif request.method == "POST":
         data = request.POST
-        opcao= data.get("opcao")
+        opcao = data.get("opcao")
         if opcao == "confirma":
             userExc.delete()
-            #userExc.save()
-        return render(request, "servtef/msg.generica.html", {"msg": "Exclusão de usuário realizada com sucesso"})
+            return render(request, "servtef/msg.generica.html", {"msg": "Exclusão de usuário realizada com sucesso"})
+        else:
+            return render(request, "servtef/dashboard.html", {"userTEF": userTEF})
+
+
+""" View da tela de relatório de usuários 
+"""
+
+
+def ListaUsuarios(request):
+
+    LISTA_LOJAS = []
+    aux_loja = []
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está a operação
+
+    """ Monta o form para a exibição das lojas a selecionar"""
+
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
+        form_loja = forms.NomeLojaForm()
+
+        ''' Seleciona todas as lojas pertencentes à empresa, para montar a lista de lojas disponíveis,
+        '''
+
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+        aux_loja.append('9999')
+        aux_loja.append('Todas')
+        LISTA_LOJAS.append(aux_loja[:])
+        aux_loja.clear()
+        for loja in lojas:
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
+                aux_loja.append(str(loja.codLoja))
+                aux_loja.append(loja.nomeLoja)
+                LISTA_LOJAS.append(aux_loja[:])
+                aux_loja.clear()
+
+        form_loja.fields['codLoja'].choices = LISTA_LOJAS
+        codloja = 0
+    else:  # usuário loja só pode listar usuário da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+        aux_loja.append(str(loja.codLoja))
+        aux_loja.append(loja.nomeLoja)
+        LISTA_LOJAS.append(aux_loja[:])
+        form_loja = forms.NomeLojaForm()
+        form_loja.fields['codLoja'].choices = LISTA_LOJAS
+        codloja = userTEF.loja
+
+    if request.method == "GET":
+        return render(request, "servtef/ler.loja.html", {"form": form_loja,
+                                                         "usuario": userTEF,
+                                                         }
+                      )
+    elif request.method == "POST":
+        form_loja = forms.NomeLojaForm(request.POST)
+        data = request.POST
+        opcao = data.get("opcao")
+        if opcao == "confirmar":
+            codloja = int(data.get("codLoja"))
+            return redirect("servtef:listadadosusuarios", 1, codloja)
+        elif opcao == "cancela":
+            return render(request, "servtef/dashboard.html", {"userTEF": userTEF})
+
+
+''' View da tela para exibição dos dados dos usuários, de acordo com a loja selecionada na tela ListaUsuarios
+    - Template - servtef/lista.Usuarios.html'''
+
+
+def ListaDadosUsuarios(request, page, loja):
+    global parametros
+
+    if loja != 9999:
+        queryset = UsuarioTEF.objects.filter(loja=loja,
+                                             ).order_by("loja")
+    else:  # seleciona registros de todas as lojas
+        queryset = UsuarioTEF.objects.all().order_by("loja")
+
+    if not queryset:
+        return render(request, "servtef/msg.generica.html", {"msg": "Não existem usuários para esta loja"})
+
+    paginator = Paginator(queryset, per_page=9)
+    page_object = paginator.get_page(page)
+
+    context = {"page_obj": page_object, "codloja": loja}
+
+    return render(request, "servtef/lista.Usuarios.html", context)
 
 
 ''' View da tela para a inclusão de loja
@@ -160,11 +255,10 @@ def exclui_user(request, pk):
 
 
 def IncluiLoja(request):
-
     EMPRESA = []
     aux_emp = []
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
     aux_emp.append(str(userTEF.empresa.codEmp))
     aux_emp.append(userTEF.empresa.nomeEmp)
     EMPRESA.append(aux_emp[:])
@@ -211,14 +305,13 @@ def IncluiLoja(request):
 
 
 def AlteraExcluiLoja(request, oper):
-
     EMPRESA = []
     aux_emp = []
     titulo = ''
     msg = ''
     dados_iniciais = {}
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a operação
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a operação
     aux_emp.append(str(userTEF.empresa.codEmp))
     aux_emp.append(userTEF.empresa.nomeEmp)
     EMPRESA.append(aux_emp[:])
@@ -239,7 +332,7 @@ def AlteraExcluiLoja(request, oper):
                       )
     elif request.method == "POST":
         data = request.POST
-        if data.get("codigo"): # este é o POST do primeiro template, de leitura de código
+        if data.get("codigo"):  # este é o POST do primeiro template, de leitura de código
             try:
                 loja = Loja.objects.get(Q(empresa=userTEF.empresa) &
                                         Q(codLoja=int(data.get("codigo")))
@@ -263,11 +356,11 @@ def AlteraExcluiLoja(request, oper):
                 if oper == 'altera':
                     msg = "Informe os campos a alterar"
                     titulo = "Alteração de loja"
-                    #form_loja.fields['codLoja'].disabled = True
+                    # form_loja.fields['codLoja'].disabled = True
                 else:
                     msg = "Confirme a exclusão da loja"
                     titulo = "Exclusão de loja"
-                    #form_loja.fields['codLoja'].disabled = True
+                    # form_loja.fields['codLoja'].disabled = True
                     form_loja.fields['nomeLoja'].disabled = True
                     form_loja.fields['CNPJ'].disabled = True
                 return render(request, "servtef/altera.exclui.loja.html", {"form": form_loja,
@@ -277,7 +370,7 @@ def AlteraExcluiLoja(request, oper):
                                                                            "oper": oper
                                                                            }
                               )
-        else: # é o POST do segundo template, com os dados da loja
+        else:  # é o POST do segundo template, com os dados da loja
             form_loja = forms.LojaForm(request.POST)
             cod_loja = int(data.get('codLoja'))
             if oper == 'altera':
@@ -293,31 +386,87 @@ def AlteraExcluiLoja(request, oper):
                                            Q(codLoja=cod_loja)
                                            )
                 lojaExc.delete()
-                #lojaExc.save()
+                # lojaExc.save()
                 msg = f'Loja {cod_loja} excluida com sucesso'
             return render(request, "servtef/msg.generica.html", {"msg": msg})
 
 
-def IncluiPDV(request):
+''' View da tela para a exibição das lojas . 
+    - Templates - lista.Lojas.html'''
 
+
+def ListaLojas(request, page, oper):
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a operação
+
+    """ Exibe a(s) loja(s) a selecionar """
+
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
+        lojas = Loja.objects.filter(empresa=userTEF.empresa,
+                                    ).exclude(
+            codLoja=9999
+        ).order_by(
+            'codLoja'
+        )
+        """ Monta os dados para paginação"""
+        paginator = Paginator(lojas, per_page=8)
+        page_object = paginator.get_page(page)
+        context = {"page_obj": page_object, "paginacao": True, "operacao": oper}
+    else:  # usuário loja só pode listar registros da propria loja
+        lojas = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+        context = {"loja": lojas, "paginacao": False, "operacao": oper}
+
+    return render(request, "servtef/lista.Lojas.html", context)
+
+
+''' View da tela para a exibição das adquirentes e bandieras cadastradas para a loja selecionada em 
+    ListaLojas  
+    
+    - Templates - lista.DadosLoja.html'''
+
+
+def ListaDadosLoja(request, pk, page):
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a operação
+    loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=pk)
+
+    """ Seleciona as adquirentes cadastradas para a loja"""
+
+    adquirentes = NumLogico.objects.filter(empresa=userTEF.empresa, loja=pk)
+
+    """ Seleciona as bandeiras cadastradas para a loja"""
+
+    bandeiras = Roteamento.objects.filter(empresa=userTEF.empresa, loja=pk)
+
+    if request.method == "GET":
+        return render(request, "servtef/lista.DadosLoja.html", {"usuario": userTEF,
+                                                                "nomeloja": loja.nomeLoja,
+                                                                "adiqs": adquirentes,
+                                                                "bands": bandeiras,
+                                                                "page": page
+                                                                }
+                      )
+
+
+def IncluiPDV(request):
     LISTA_LOJAS = []
     aux_loja = []
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
     form_PDV = forms.PDVForm()
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
         form_PDV = forms.PDVForm()
-        lojas = Loja.objects.filter (empresa=userTEF.empresa)
-        for loja in lojas: # inicializa a lista de todas as lojas da empresa
-            if loja.codLoja != 9999: # não inclui a loja Dummy
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+        for loja in lojas:  # inicializa a lista de todas as lojas da empresa
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
                 aux_loja.append(str(loja.codLoja))
                 aux_loja.append(loja.nomeLoja)
                 LISTA_LOJAS.append(aux_loja[:])
                 aux_loja.clear()
         form_PDV.fields['codLoja'].choices = LISTA_LOJAS
         codloja = 0
-    else: # usuário loja só pode criar PDV da propria loja
-        loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+    else:  # usuário loja só pode criar PDV da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
         aux_loja.append(str(loja.codLoja))
         aux_loja.append(loja.nomeLoja)
         LISTA_LOJAS.append(aux_loja[:])
@@ -333,7 +482,7 @@ def IncluiPDV(request):
     elif request.method == "POST":
         form = forms.PDVForm(request.POST)
         data = request.POST
-        loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=int(data.get("codLoja")))
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=int(data.get("codLoja")))
 
         try:
             pdv = PDV.objects.get(Q(empresa=userTEF.empresa) &
@@ -341,16 +490,17 @@ def IncluiPDV(request):
                                   Q(codPDV=int(data.get("codPDV")))
                                   )
         except PDV.DoesNotExist:
-            dados_pdv = PDV.objects.create (loja=loja,
-                                            empresa=userTEF.empresa,
-                                            codPDV=int(data.get("codPDV")),
-                                            UsuarioAtivo=0,
-                                            TransVendaCreditoVista=bool(data.get('TransVendaCreditoVista')),
-                                            TransVendaCreditoParc=bool(data.get('TransVendaCreditoParc')),
-                                            TransVendaCreditoSemJuros=bool(data.get('TransVendaCreditoSemJuros')),
-                                            TransVendaDebito=bool(data.get('TransVendaDebito')),
-                                            TransCancelamento=bool(data.get('TransCancelamento')),
-                                            )
+            dados_pdv = PDV.objects.create(loja=loja,
+                                           empresa=userTEF.empresa,
+                                           codPDV=int(data.get("codPDV")),
+                                           UsuarioAtivo=0,
+                                           TransDigitado=bool(data.get('TransDigitado')),
+                                           TransVendaCreditoVista=bool(data.get('TransVendaCreditoVista')),
+                                           TransVendaCreditoParc=bool(data.get('TransVendaCreditoParc')),
+                                           TransVendaCreditoSemJuros=bool(data.get('TransVendaCreditoSemJuros')),
+                                           TransVendaDebito=bool(data.get('TransVendaDebito')),
+                                           TransCancelamento=bool(data.get('TransCancelamento')),
+                                           )
             dados_pdv.save()
         else:
             msg = f'PDV {(data.get("codPDV"))} já existe !!!'
@@ -369,12 +519,12 @@ def IncluiPDV(request):
 
 
 def ListaPDV(request, oper):
+    userTEF = UsuarioTEF.objects.get(
+        user=request.user)  # dados adicionais do usuario que está fazendo a alteração/exclusão
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados adicionais do usuario que está fazendo a alteração/exclusão
-
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo,exibe todos os PDV´s da empresa
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo,exibe todos os PDV´s da empresa
         lista_PDV = PDV.objects.filter(empresa=userTEF.empresa).order_by('loja')
-    else: # usuario gerente de uma loja
+    else:  # usuario gerente de uma loja
         lista_PDV = PDV.objects.filter(empresa=userTEF.empresa, loja=userTEF.loja.codLoja
                                        ).order_by('codPDV')  # exibe todos os PDV´s da loja
 
@@ -395,7 +545,8 @@ class ExcluiPDV(DeleteView):
 
 class AlteraPDV(UpdateView):
     model = PDV
-    fields = ['TransVendaCreditoVista',
+    fields = ['TransDigitado',
+              'TransVendaCreditoVista',
               'TransVendaCreditoParc',
               'TransVendaCreditoSemJuros',
               'TransVendaDebito',
@@ -408,11 +559,38 @@ class AlteraPDV(UpdateView):
         return reverse_lazy("servtef:dashboard")
 
 
+''' View para a exibição dos dados de um PDV, para uma deteerminada loja
+    - Template - lista.DadosPDV.html'''
+
+
+def RelatorioPDV(request, pk, page):
+
+    TRANS = ['Crédito a vista',
+             'Crédito Parc. c/ juros',
+             'Crédito Parc. s/ juros',
+             'Débito',
+             'Cancelamento'
+             ]
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados adicionais do usuario que está fazendo a operação
+    loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=pk)
+    lista_PDV = PDV.objects.filter(empresa=userTEF.empresa, loja=loja.codLoja
+                                       ).order_by('codPDV')  # exibe todos os PDV´s da loja
+
+    if request.method == "GET":
+        return render(request, "servtef/lista.DadosPDV.html", {"usuario": userTEF,
+                                                               "nomeloja": loja.nomeLoja,
+                                                               "pdvs": lista_PDV,
+                                                               "page": page,
+                                                               "trans": TRANS
+                                                               }
+                      )
+
+
 class IncluiBandeira(CreateView):
     model = Bandeira
     fields = ['codBan',
               'nomeBan',
-             ]
+              ]
 
     template_name = "servtef/inclui.Bandeira.html"
 
@@ -424,7 +602,7 @@ def IncluiAdiq(request):
     LISTA_BANDEIRAS = []
     aux_ban = []
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
     form_Adiq = forms.AdiqForm()
     '''bandeiras = Bandeira.objects.all ()
     for bandeira in bandeiras: # inicializa a lista de bandeiras
@@ -447,9 +625,9 @@ def IncluiAdiq(request):
         try:
             adiq = Adquirente.objects.get(codAdiq=int(data.get("codAdiq")))
         except Adquirente.DoesNotExist:
-            dados_adiq = Adquirente.objects.create (codAdiq=int(data.get("codAdiq")),
-                                                    nomeAdiq=data.get("nomeAdiq")
-                                                    )
+            dados_adiq = Adquirente.objects.create(codAdiq=int(data.get("codAdiq")),
+                                                   nomeAdiq=data.get("nomeAdiq")
+                                                   )
 
             dados_adiq.save()
             # bandeiras = data.get('bandeiras')
@@ -475,10 +653,38 @@ class ListaAdiq(ListView):
               'bandeiras'
               ]
 
-    template_name = "servtef/lista.Adiq.html"
+    queryset = Adquirente.objects.all ().order_by ('nomeAdiq')
+
+    template_name = "servtef/lista.Adiq1.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['oper'] = "altera"
+        return context
 
     def get_success_url(self):
         return reverse_lazy("servtef:dashboard")
+
+
+class RelatorioAdiq(ListView):
+    model = Adquirente
+    fields = ['codAdiq',
+              'nomeAdiq',
+              'bandeiras'
+              ]
+
+    queryset = Adquirente.objects.all ().order_by ('nomeAdiq')
+
+    template_name = "servtef/lista.Adiq1.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['oper'] = "relat"
+        return context
+
+    def get_success_url(self):
+        return reverse_lazy("servtef:dashboard")
+
 
 
 class AlteraAdiq(UpdateView):
@@ -499,33 +705,32 @@ class AlteraAdiq(UpdateView):
 
 
 def IncluiNumLogico(request):
-
     LISTA_LOJAS = []
     LISTA_ADIQS = []
     aux_loja = []
     aux_adiq = []
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
     form_num = forms.NumLogicoForm()
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
         form_num = forms.NumLogicoForm()
-        lojas = Loja.objects.filter (empresa=userTEF.empresa)
-        for loja in lojas: # inicializa a lista de todas as lojas da empresa
-            if loja.codLoja != 9999: # não inclui a loja Dummy
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+        for loja in lojas:  # inicializa a lista de todas as lojas da empresa
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
                 aux_loja.append(str(loja.codLoja))
                 aux_loja.append(loja.nomeLoja)
                 LISTA_LOJAS.append(aux_loja[:])
                 aux_loja.clear()
         form_num.fields['codLoja'].choices = LISTA_LOJAS
-    else: # usuário loja só pode criar numero logico da propria loja
-        loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+    else:  # usuário loja só pode criar numero logico da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
         aux_loja.append(str(loja.codLoja))
         aux_loja.append(loja.nomeLoja)
         LISTA_LOJAS.append(aux_loja[:])
         form_num.fields['codLoja'].choices = LISTA_LOJAS
 
     adiqs = Adquirente.objects.all()
-    for adiq in adiqs: # inicializa a lista de todas as adquirentes
+    for adiq in adiqs:  # inicializa a lista de todas as adquirentes
         aux_adiq.append(str(adiq.codAdiq))
         aux_adiq.append(adiq.nomeAdiq)
         LISTA_ADIQS.append(aux_adiq[:])
@@ -541,8 +746,8 @@ def IncluiNumLogico(request):
     elif request.method == "POST":
         form_num = forms.NumLogicoForm()
         data = request.POST
-        loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=int(data.get("codLoja")))
-        adiq = Adquirente.objects.get (codAdiq=int(data.get("codAdiq")))
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=int(data.get("codLoja")))
+        adiq = Adquirente.objects.get(codAdiq=int(data.get("codAdiq")))
         try:
             num_log = NumLogico.objects.get(empresa=userTEF.empresa, loja=loja, adiq=adiq)
         except NumLogico.DoesNotExist:
@@ -570,13 +775,12 @@ def IncluiNumLogico(request):
 
 
 def ListaNumLogico(request, oper):
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a operação
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a operação
-
-    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2: # usuário admin ou corporativo
-        lojas = Loja.objects.filter (empresa=userTEF.empresa)
-    else: # usuário loja só pode criar numero logico da propria loja
-        lojas = Loja.objects.get (empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+    else:  # usuário loja só pode criar numero logico da propria loja
+        lojas = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
 
     if request.method == "GET":
         return render(request, "servtef/lista.num.logico.html", {"lojas": lojas,
@@ -587,15 +791,18 @@ def ListaNumLogico(request, oper):
 
 
 def AlteraNumLogico(request, pk):
-
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a operação
-    loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=pk)
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a operação
+    loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=pk)
     NumLogFormSet = modelformset_factory(NumLogico, fields=('adiq', 'numlogico'), extra=0,
                                          )
     if request.method == "GET":
-        form=forms.NumLogicoForm()
+        # form = forms.NumLogicoForm()
+        queryset = NumLogico.objects.filter(empresa=userTEF.empresa, loja=pk)
+        if not queryset:
+            msg = f'Não existe número lógico cadastrado para a loja {loja.nomeLoja}'
+            return render(request, "servtef/msg.generica.html", {"msg": msg})
 
-        formset = NumLogFormSet(queryset=NumLogico.objects.filter(empresa=userTEF.empresa, loja=pk))
+        formset = NumLogFormSet(queryset=queryset)
         return render(request, "servtef/altera.num.logico.html", {"form": formset,
                                                                   "loja": loja,
                                                                   "usuario": userTEF,
@@ -613,18 +820,17 @@ def AlteraNumLogico(request, pk):
 
 
 def IncluiRoteamento(request, pk):
-
     LISTA_BANDEIRAS = []
     LISTA_ADIQS = []
     aux_ban = []
     aux_adiq = []
 
-    userTEF = UsuarioTEF.objects.get(user=request.user) # dados do usuario que está fazendo a inclusão
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
     form_rot = forms.RoteamentoForm()
-    bandeiras = Bandeira.objects.all ()
-    adiqs = NumLogico.objects.filter (empresa=userTEF.empresa, loja=pk)
-    loja = Loja.objects.get (empresa=userTEF.empresa, codLoja=pk)
-    for adiq in adiqs: # inicializa a lista de todas as adquirentes para a loja selecionada
+    bandeiras = Bandeira.objects.all()
+    adiqs = NumLogico.objects.filter(empresa=userTEF.empresa, loja=pk)
+    loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=pk)
+    for adiq in adiqs:  # inicializa a lista de todas as adquirentes para a loja selecionada
         # nomeadiq = Adquirente.objects.get (codAdiq=adiq.id)
         aux_adiq.append(str(adiq.adiq.codAdiq))
         aux_adiq.append(adiq.adiq.nomeAdiq)
@@ -632,7 +838,7 @@ def IncluiRoteamento(request, pk):
         aux_adiq.clear()
     form_rot.fields['codAdiq'].choices = LISTA_ADIQS
     form_rot.fields['codAdiq2'].choices = LISTA_ADIQS
-    for bandeira in bandeiras: # inicializa a lista de todas as bandeiras
+    for bandeira in bandeiras:  # inicializa a lista de todas as bandeiras
         aux_ban.append(str(bandeira.codBan))
         aux_ban.append(bandeira.nomeBan)
         LISTA_BANDEIRAS.append(aux_ban[:])
@@ -648,11 +854,11 @@ def IncluiRoteamento(request, pk):
         form_rot = forms.RoteamentoForm(request.POST)
         data = request.POST
         bandeiras = form_rot['codBan'].value()
-        for bandeira in bandeiras: # inclui o roteamento para adquirente, para cada bandeira selecionada
-            tabBan = Bandeira.objects.get (codBan=bandeira)
+        for bandeira in bandeiras:  # inclui o roteamento para adquirente, para cada bandeira selecionada
+            tabBan = Bandeira.objects.get(codBan=bandeira)
             try:
-                adiq1 = Adquirente.objects.get (codAdiq=int(data.get("codAdiq")), bandeiras=tabBan)
-            except Adquirente.DoesNotExist: # a bandeira selecionada para roteamento não é capturada pela adquirente
+                adiq1 = Adquirente.objects.get(codAdiq=int(data.get("codAdiq")), bandeiras=tabBan)
+            except Adquirente.DoesNotExist:  # a bandeira selecionada para roteamento não é capturada pela adquirente
                 msg = f'Bandeira {tabBan.nomeBan} não é capturada pela adquirente primária !!!'
                 form_rot.fields['codAdiq'].choices = LISTA_ADIQS
                 form_rot.fields['codAdiq2'].choices = LISTA_ADIQS
@@ -663,8 +869,8 @@ def IncluiRoteamento(request, pk):
                                                                           }
                               )
             try:
-                adiq2 = Adquirente.objects.get (codAdiq=int(data.get("codAdiq2")), bandeiras=tabBan)
-            except Adquirente.DoesNotExist: # a bandeira selecionada para roteamento não é capturada pela adquirente
+                adiq2 = Adquirente.objects.get(codAdiq=int(data.get("codAdiq2")), bandeiras=tabBan)
+            except Adquirente.DoesNotExist:  # a bandeira selecionada para roteamento não é capturada pela adquirente
                 msg = f'Bandeira {tabBan.nomeBan} não é capturada pela adquirente secundária !!!'
                 form_rot.fields['codAdiq'].choices = LISTA_ADIQS
                 form_rot.fields['codAdiq2'].choices = LISTA_ADIQS
@@ -675,10 +881,10 @@ def IncluiRoteamento(request, pk):
                                                                           }
                               )
             try:
-                roteamento = Roteamento.objects.get (empresa=userTEF.empresa,
-                                                     loja=loja,
-                                                     bandeira=tabBan
-                                                     )
+                roteamento = Roteamento.objects.get(empresa=userTEF.empresa,
+                                                    loja=loja,
+                                                    bandeira=tabBan
+                                                    )
             except Roteamento.DoesNotExist:
                 roteamento = Roteamento(empresa=userTEF.empresa,
                                         loja=loja,
@@ -700,3 +906,451 @@ def IncluiRoteamento(request, pk):
         return render(request, "servtef/msg.generica.html", {"msg": msg})
 
 
+''' View da tela para exibição dos dados da empresa. 
+    Não existe tela para criação, alteração e deleção da empresa.
+    Como é a entidade maior do sistema, ela será criada no on board do sistema, pelo admin. 
+    - Template - inclui.roteamento.html'''
+
+
+class ListaEmpresa(DetailView):
+    model = Empresa
+
+    fields = ['codAdiq',
+              'nomeAdiq',
+              'bandeiras'
+              ]
+
+    template_name = "servtef/lista.Empresa.html"
+
+
+'''class ListaPendencias(ListView):
+
+    model = LogTrans
+
+    fields = ['NSU_TEF',
+              'dataLocal',
+              'horaLocal',
+              'NSH_HOST',
+              'dataHoraHost',
+              'codLoja',
+              'codPDV',
+              'codTRN',
+              'statusTRN',
+              'codResp',
+              'msgResp',
+              'valorTrans',
+              'nomeAdiq',
+              'nomeBan'
+              ]
+
+    print(f'loja {lojaGlobal}')
+    queryset = LogTrans.objects.filter(codLoja=lojaGlobal,
+                                       statusTRN="Pendente",
+                                       codResp=0).order_by("dataHoraHost")
+    paginate_by = 6
+    template_name = "servtef/lista.Pendencias.html"
+
+    def get_success_url(self):
+        return reverse_lazy("servtef:dashboard")'''
+
+''' View da tela para exibição dos registros pendentes, de acordo com o filtro
+    feito na tela SelecionaPendencias
+    - Template - servtef/lista.Pendencias.html'''
+
+
+def ListaPendencias(request, page):
+    global parametros
+
+    dt_inicial = parametros["dt_inicial"]
+    dt_final = parametros["dt_final"]
+    loja = parametros["codLoja"]
+
+    if loja != 9999:
+        queryset = LogTrans.objects.filter(codLoja=loja,
+                                           dataLocal__gte=dt_inicial,
+                                           dataLocal__lte=dt_final,
+                                           statusTRN="Pendente",
+                                           codResp=0).order_by("dataHoraHost")
+    else:  # seleciona pendendias de todas as lojas
+        queryset = LogTrans.objects.filter(dataLocal__gte=dt_inicial,
+                                           dataLocal__lte=dt_final,
+                                           statusTRN="Pendente",
+                                           codResp=0).order_by("dataHoraHost")
+
+    if not queryset:
+        return render(request, "servtef/msg.generica.html", {"msg": "Não existem pendencias para esta seleção"})
+
+    paginator = Paginator(queryset, per_page=6)
+    page_object = paginator.get_page(page)
+
+    context = {"page_obj": page_object}
+
+    return render(request, "servtef/lista.Pendencias.html", context)
+
+
+''' View da tela para seleção dos registros pendentes a listar.
+    O filtro dos registros será através da loja e data inicial/final
+    - Template - servtef/seleciona.Pend.html'''
+
+
+def SelecionaPendencias(request):
+    global parametros
+
+    lojaSel = 0
+    LISTA_LOJAS = []
+    aux_loja = []
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
+    form_Sel = forms.SelecaoPendForm()
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
+        form_Sel = forms.SelecaoPendForm()
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+        aux_loja.append('9999')
+        aux_loja.append('Todas')
+        LISTA_LOJAS.append(aux_loja[:])
+        aux_loja.clear()
+        for loja in lojas:  # inicializa a lista de todas as lojas da empresa
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
+                aux_loja.append(str(loja.codLoja))
+                aux_loja.append(loja.nomeLoja)
+                LISTA_LOJAS.append(aux_loja[:])
+                aux_loja.clear()
+        form_Sel.fields['codLoja'].choices = LISTA_LOJAS
+        codloja = 0
+    else:  # usuário loja só pode tratar penencias da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+        aux_loja.append(str(loja.codLoja))
+        aux_loja.append(loja.nomeLoja)
+        LISTA_LOJAS.append(aux_loja[:])
+        form_Sel.fields['codLoja'].choices = LISTA_LOJAS
+        codloja = userTEF.loja
+    if request.method == "GET":
+        msg = " "
+        return render(request, "servtef/seleciona.Pend.html", {"form": form_Sel,
+                                                               "usuario": userTEF,
+                                                               "msg": msg,
+                                                               "codLoja": lojaSel
+                                                               }
+                      )
+    elif request.method == "POST":
+        form_Sel = forms.SelecaoPendForm(request.POST)
+        data = request.POST
+        opcao = data.get("opcao")
+        if opcao == "confirma":
+            lojaSel = int(data.get('codLoja'))
+            data = form_Sel["dataFinal"].value()
+            data_final = datetime.datetime(int(data[-4:]), int(data[3:5]), int(data[0:2]))
+            data = form_Sel["dataInicial"].value()
+            data_inicial = datetime.datetime(int(data[-4:]), int(data[3:5]), int(data[0:2]))
+            # print(f'dt inicial {data_inicial.date()}')
+            # print(f'dt final {data_final.date()}')
+            if data_inicial.date() > data_final.date() or data_inicial.date() > datetime.date.today():
+                return render(request, "servtef/msg.generica.html", {"msg": "Data inicial inválida"})
+            elif data_final.date() > datetime.date.today():
+                return render(request, "servtef/msg.generica.html", {"msg": "Data final inválida"})
+            else:
+                parametros = {"codLoja": lojaSel,
+                              "dt_inicial": data_inicial.date(),
+                              "dt_final": data_final.date(),
+                              }
+                return redirect("servtef:listapendencias", 1)
+        else:
+            return render(request, "servtef/dashboard.html", {"userTEF": userTEF})
+
+
+''' View da tela para tratamento de transações pendentesr.
+    O registro a ser tratado foi selecionada na tela ListaPendencias
+    
+    - Template - servtef/resolve.Pend.html'''
+
+
+def TrataPendencia(request, pk):
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
+    reg_Log = LogTrans.objects.get(NSU_TEF=pk)
+    loja = Loja.objects.get(empresa=reg_Log.codEmp,
+                            codLoja=reg_Log.codLoja
+                            )
+    num_cartao = reg_Log.numCartao
+    num_cartao = f'{num_cartao[-4:]:*>{len(num_cartao)}}'
+    nomeTrans = ''
+
+    match reg_Log.codTRN:
+
+        case 'Cancelamento':
+            nomeTrans = "CANCELAMENTO"
+        case 'CredVista':
+            nomeTrans = "CRÉDITO A VISTA"
+        case 'CredParc':
+            nomeTrans = f"PARCELADO SEM JUROS"
+        case 'CredParcComJuros':
+            nomeTrans = f"PARCELADO COM JUROS"
+        case 'Debito':
+            nomeTrans = "DÉBITO"
+
+    valor_inicial = {'NSU_TEF': reg_Log.NSU_TEF,
+                     'NSU_HOST': reg_Log.NSU_HOST,
+                     'dataHoraHost': reg_Log.dataHoraHost,
+                     'nomeLoja': loja.nomeLoja,
+                     'codPDV': reg_Log.codPDV,
+                     'codTRN': nomeTrans,
+                     'numCartao': num_cartao,
+                     'valorTrans': reg_Log.valorTrans,
+                     'nomeBan': reg_Log.nomeBan,
+                     'nomeAdiq': reg_Log.nomeAdiq
+                     }
+
+    form_Log = forms.RegLogPendForm(initial=valor_inicial)
+
+    if request.method == "GET":
+        return render(request, "servtef/resolve.Pend.html", {"form": form_Log,
+                                                             "usuario": userTEF,
+                                                             }
+                      )
+    elif request.method == "POST":
+        form_Sel = forms.RegLogPendForm(request.POST)
+        data = request.POST
+        opcao = data.get("opcao")
+        if opcao == "confirma":
+            reg_Log.statusTRN = "Efetuada"
+            reg_Log.save()
+            return render(request, "servtef/msg.generica.html", {"msg": "Transação confirmada",
+                                                                 }
+                          )
+        elif opcao == "desfaz":
+            reg_Log.statusTRN = "Desfeita"
+            reg_Log.save()
+            return render(request, "servtef/msg.generica.html", {"msg": "Transação desfeita"}
+                          )
+        return render(request, "servtef/dashboard.html", {"userTEF": userTEF})
+
+
+''' View da tela para seleção dos registros do Log a listar.
+    O filtro dos registros será através da loja, data inicial/final, status, adquirente, bandeira
+    
+    - Template - servtef/seleciona.Pend.html'''
+
+
+def SelecionaRegLog(request):
+    global parametros
+
+    lojaSel = 0
+    LISTA = []
+    aux = []
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
+    form_Sel = forms.SelecaoLogForm()
+
+    """ Exibe as lojas a selecionar, se o usuário for admin/corporativo """
+
+    if userTEF.perfil_user == 1 or userTEF.perfil_user == 2:  # usuário admin ou corporativo
+        form_Sel = forms.SelecaoLogForm()
+        lojas = Loja.objects.filter(empresa=userTEF.empresa)
+        aux.append('9999')
+        aux.append('Todas')
+        LISTA.append(aux[:])
+        aux.clear()
+        for loja in lojas:  # inicializa a lista de todas as lojas da empresa
+            if loja.codLoja != 9999:  # não inclui a loja Dummy
+                aux.append(str(loja.codLoja))
+                aux.append(loja.nomeLoja)
+                LISTA.append(aux[:])
+                aux.clear()
+        form_Sel.fields['codLoja'].choices = LISTA
+        codloja = 0
+    else:  # usuário loja só pode listar registros da propria loja
+        loja = Loja.objects.get(empresa=userTEF.empresa, codLoja=userTEF.loja.codLoja)
+        aux.append(str(loja.codLoja))
+        aux.append(loja.nomeLoja)
+        LISTA.append(aux[:])
+        form_Sel.fields['codLoja'].choices = LISTA
+        codloja = userTEF.loja
+
+    """ Exibe as adquirentes a selecionar """
+
+    aux.clear()
+    LISTA.clear()
+    aux.append('9999')
+    aux.append('Todas')
+    LISTA.append(aux[:])
+    aux.clear()
+    adquirentes = Adquirente.objects.all()
+    for adiq in adquirentes:
+        aux.append(adiq.nomeAdiq)
+        aux.append(adiq.nomeAdiq)
+        LISTA.append(aux[:])
+        aux.clear()
+    form_Sel.fields['nomeAdiq'].choices = LISTA
+
+    """ Exibe as bandeiras a selecionar """
+
+    aux.clear()
+    LISTA.clear()
+    aux.append('9999')
+    aux.append('Todas')
+    LISTA.append(aux[:])
+    aux.clear()
+    bandeiras = Bandeira.objects.all()
+    for band in bandeiras:
+        aux.append(str(band.codBan))
+        aux.append(band.nomeBan)
+        LISTA.append(aux[:])
+        aux.clear()
+    form_Sel.fields['nomeBan'].choices = LISTA
+
+    if request.method == "GET":
+        return render(request, "servtef/seleciona.Pend.html", {"form": form_Sel,
+                                                               "usuario": userTEF,
+                                                               }
+                      )
+    elif request.method == "POST":
+        form_Sel = forms.SelecaoLogForm(request.POST)
+        data = request.POST
+        opcao = data.get("opcao")
+        if opcao == "confirma":
+            lojaSel = int(data.get('codLoja'))
+            data_aux = form_Sel["dataFinal"].value()
+            data_final = datetime.datetime(int(data_aux[-4:]), int(data_aux[3:5]), int(data_aux[0:2]))
+            data_aux = form_Sel["dataInicial"].value()
+            data_inicial = datetime.datetime(int(data_aux[-4:]), int(data_aux[3:5]), int(data_aux[0:2]))
+            # print(f'dt inicial {data_inicial.date()}')
+            # print(f'dt final {data_final.date()}')
+            if data_inicial.date() > data_final.date() or data_inicial.date() > datetime.date.today():
+                return render(request, "servtef/msg.generica.html", {"msg": "Data inicial inválida"})
+            elif data_final.date() > datetime.date.today():
+                return render(request, "servtef/msg.generica.html", {"msg": "Data final inválida"})
+            else:
+                statusTRN = data.get('statusTRN')
+                nomeAdiq = data.get('nomeAdiq')
+                nomeBan = data.get('nomeBan')
+                parametros = {"codLoja": lojaSel,
+                              "dt_inicial": data_inicial.date(),
+                              "dt_final": data_final.date(),
+                              "statusTRN": statusTRN,
+                              "nomeAdiq": nomeAdiq,
+                              "nomeBan": nomeBan
+                              }
+                return redirect("servtef:listaregistroslog", 1)
+        else:
+            return render(request, "servtef/dashboard.html", {"userTEF": userTEF})
+
+
+''' View da tela para exibição dos registros do Log, de acordo com o filtro
+    feito na tela SelecionaRegLog
+    - Template - servtef/lista.Log.html'''
+
+
+def ListaRegistrosLog(request, page):
+    global parametros
+
+    dt_inicial = parametros["dt_inicial"]
+    dt_final = parametros["dt_final"]
+    loja = parametros["codLoja"]
+    statusTRN = parametros["statusTRN"]
+    nomeAdiq = parametros["nomeAdiq"]
+    nomeBan = parametros["nomeBan"]
+    # print(statusTRN)
+
+    """ Filtro por loja. 9999 significa todas  """
+
+    if loja != 9999:
+        queryset = LogTrans.objects.filter(codLoja=loja,
+                                           dataLocal__gte=dt_inicial,
+                                           dataLocal__lte=dt_final,
+                                           ).order_by("dataHoraHost")
+    else:  # seleciona registros de todas as lojas
+        queryset = LogTrans.objects.filter(dataLocal__gte=dt_inicial,
+                                           dataLocal__lte=dt_final,
+                                           ).order_by("dataHoraHost")
+
+    """ Filtro por status da transação. 999 significa todos """
+
+    if statusTRN != '999':
+        queryset = queryset.filter(statusTRN=statusTRN)
+
+    """ Filtro por adquirente. 9999 significa todos """
+
+    if nomeAdiq != '9999':
+        queryset = queryset.filter(nomeAdiq=nomeAdiq)
+
+    """ Filtro por bandeira. 9999 significa todas """
+
+    if nomeBan != '9999':
+        queryset = queryset.filter(nomeBan=nomeBan)
+
+    if not queryset:
+        return render(request, "servtef/msg.generica.html", {"msg": "Não existem registros para esta seleção"})
+
+    paginator = Paginator(queryset, per_page=9)
+    page_object = paginator.get_page(page)
+
+    context = {"page_obj": page_object}
+    parametros["page_number"] = page_object.number
+
+    return render(request, "servtef/lista.Log.html", context)
+
+
+""" View da tela para exibir um registro do log completo.
+    O registro a ser tratado foi selecionada na tela ListaRegistrosLog
+    
+    - Template - servtef/listaRegLog.html"""
+
+
+def ExibeRegLog(request, pk):
+
+    global parametros
+
+    # print(parametros["dt_inicial"])
+
+    userTEF = UsuarioTEF.objects.get(user=request.user)  # dados do usuario que está fazendo a inclusão
+    reg_Log = LogTrans.objects.get(NSU_TEF=pk)
+    loja = Loja.objects.get(empresa=reg_Log.codEmp,
+                            codLoja=reg_Log.codLoja
+                            )
+    num_cartao = reg_Log.numCartao
+    num_cartao = f'{num_cartao[-4:]:*>{len(num_cartao)}}'
+    nomeTrans = ''
+
+    match reg_Log.codTRN:
+
+        case 'Cancelamento':
+            nomeTrans = "CANCELAMENTO"
+        case 'CredVista':
+            nomeTrans = "CRÉDITO A VISTA"
+        case 'CredParc':
+            nomeTrans = f"PARCELADO SEM JUROS"
+        case 'CredParcComJuros':
+            nomeTrans = f"PARCELADO COM JUROS"
+        case 'Debito':
+            nomeTrans = "DÉBITO"
+
+    valor_inicial = {'NSU_TEF': reg_Log.NSU_TEF,
+                     'NSU_HOST': reg_Log.NSU_HOST,
+                     'dataHoraHost': reg_Log.dataHoraHost,
+                     'nomeLoja': loja.nomeLoja,
+                     'codPDV': reg_Log.codPDV,
+                     'codTRN': nomeTrans,
+                     'numParcelas': reg_Log.numParcelas,
+                     'statusTRN': reg_Log.statusTRN,
+                     'codResp': reg_Log.codResp,
+                     'msgResp': reg_Log.msgResp,
+                     'numCartao': num_cartao,
+                     'valorTrans': reg_Log.valorTrans,
+                     'nomeBan': reg_Log.nomeBan,
+                     'nomeAdiq': reg_Log.nomeAdiq
+                     }
+
+    form_Log = forms.RegLogForm(initial=valor_inicial)
+
+    if request.method == "GET":
+        return render(request, "servtef/listaRegLog.html", {"form": form_Log,
+                                                            "usuario": userTEF,
+                                                            }
+                      )
+    elif request.method == "POST":
+        form_Sel = forms.RegLogForm(request.POST)
+        data = request.POST
+        opcao = data.get("opcao")
+        if opcao == "voltar":
+            return redirect("servtef:listaregistroslog", parametros['page_number'])
+        elif opcao == "cancela":
+            return render(request, "servtef/dashboard.html", {"userTEF": userTEF})

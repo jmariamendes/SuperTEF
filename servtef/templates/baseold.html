@@ -1,0 +1,70 @@
+<!-- dwitter/templates/base.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Include the Bulma CSS framework for styling -->
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+    <title>Zwitter</title>
+    <script src="https://kit.fontawesome.com/d3fd653aab.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+    <a href="{% url 'servtef:dashboard' %} ">
+    <section class="hero is-small is-success mt-7">
+            <div class="hero-head is-small has-text-right">
+                <div class="navbar-item">
+                          <div class="buttons">
+                              {% if user.is_authenticated %}
+                              <a class="button is-rounded is-small is-success is-light is-hovered is-outlined"
+                                    href="{% url 'servtef:logout' %}">
+                                    <span class="icon">
+                                        <i class="fa-solid fa-person-walking-arrow-right"></i>
+                                    </span>
+                                    <span> Sair </span>
+                              </a>
+                              {% endif %}
+                          </div>
+                </div>
+            </div>
+            <div class="hero-body is-small">
+                <div class="block">
+                    <a href="{% url 'servtef:dashboard' %}">
+                    <h1 class="title is-1 is-size-3 has-text-centered">SuperTEF
+                        <span class="is-small is-size-5"> - alem dos limites do cartão </span>
+                    </h1>
+                    </a>
+                </div>
+            </div>
+            <div class="hero-foot is-small">
+                    {% if user.is_authenticated %}
+                    <!--<div class="column is-one-half">-->
+                        <p class="title is-size-5 has-text-right"> Bem vindo(a) <strong>
+                            {{request.user.username}} </strong>
+                        </p>
+                    <!--</div>-->
+                    {% else %}
+                        <p class="is-size-4 has-text-right"> Bem vindo
+                        </p>
+                    {% endif %}
+
+            </div>
+
+
+    </section>
+    </a>
+    <div class="container">
+        <div class="columns">
+
+            {% block content %}
+
+            {% endblock content %}
+        </div>
+    </div>
+</body>
+</html>

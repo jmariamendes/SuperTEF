@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from django.contrib.auth.models import User
+from django.contrib.auth.forms import User
 
 from .models import Bandeira, Adquirente
 
@@ -8,6 +8,12 @@ from .models import Bandeira, Adquirente
 class CodigoForm(forms.Form):
 
     codigo = forms.IntegerField(required=True)
+
+
+class NomeLojaForm(forms.Form):
+
+    codLoja = forms.ChoiceField(label='Loja',
+                                widget=forms.Select)
 
 
 class RoteamentoForm(forms.Form):
@@ -20,6 +26,7 @@ class RoteamentoForm(forms.Form):
 
     codAdiq2 = forms.ChoiceField(label='Adquirente Sec.',
                                 widget=forms.Select)
+
 
 class NumLogicoForm(forms.Form):
 
@@ -78,6 +85,7 @@ class PDVForm(forms.Form):
 
     codPDV = forms.IntegerField(label='PDV', required=True)
 
+    TransDigitado = forms.BooleanField(label='Transação Digitada', required=False)
     TransVendaCreditoVista = forms.BooleanField(label='Venda Credito a Vista', required=False)
     TransVendaCreditoParc = forms.BooleanField(label='Venda Credito Parcelada', required=False)
     TransVendaCreditoSemJuros = forms.BooleanField(label='Venda Credito Parcelada s/ Juros', required=False)
@@ -87,19 +95,113 @@ class PDVForm(forms.Form):
 
 class DadosAdicionaisUsuarioForm(forms.Form):
 
-    PERFIL = [('1', 'Admin'), ('2', 'Corporativo'), ('3', 'Loja'), ('4', 'PDV')]
+    # PERFIL = [('1', 'Admin'), ('2', 'Corporativo'), ('3', 'Loja'), ('4', 'PDV')]
 
     # loja = forms.IntegerField(label='Loja', required=False)
     loja = forms.ChoiceField(label='Loja',
                              widget=forms.Select)
     perfil_user = forms.ChoiceField(label='Perfil do usuário',
                                     widget=forms.RadioSelect,
-                                    choices=PERFIL)
+                                    )
 
-    '''admin = forms.BooleanField(label='Admin', required=False)
-    corporativo = forms.BooleanField(label='Corporativo', required=False)
-    operador_loja = forms.BooleanField(label='Operador Loja', required=False)
-    operador_pdv = forms.BooleanField(label='Operador PDV', required=False)'''
+
+class SelecaoPendForm(forms.Form):
+
+    """ Form para seleção dos registros pendentes a listar """
+
+    codLoja = forms.ChoiceField(label='Loja',
+                                widget=forms.Select)
+
+    dataInicial = forms.DateField(label="Data inicial",
+                                  widget=forms.SelectDateWidget,
+                                  )
+    dataFinal = forms.DateField(label="Data final",
+                                widget=forms.SelectDateWidget)
+
+
+class RegLogPendForm(forms.Form):
+
+    """ Form para exibição de um registro do Log, para tratamento de pendência"""
+
+    NSU_TEF = forms.IntegerField(label="NSU TEF", disabled=True)
+    NSU_HOST = forms.IntegerField(label="NSU Adquirente", disabled=True)
+    dataHoraHost = forms.DateTimeField(label="Data/Hora", disabled=True)
+    nomeLoja = forms.CharField(label="Loja",
+                               max_length=50, disabled=True)
+    codPDV = forms.IntegerField(label="PDV", disabled=True)
+    codTRN = forms.CharField(label="Transação",
+                             max_length=20, disabled=True)
+    numCartao = forms.CharField(label="Cartão",
+                                max_length=20, disabled=True)
+    valorTrans = forms.DecimalField(label="Valor",
+                                    decimal_places=2,
+                                    max_digits=10, disabled=True)
+    nomeBan = forms.CharField(label="Bandeira",
+                              max_length=50, disabled=True)
+    nomeAdiq = forms.CharField(label="Adquirente",
+                               max_length=50, disabled=True)
+
+
+class SelecaoLogForm(forms.Form):
+
+    """ Form para seleção dos registros do Log a listar """
+
+    STATUS_TRN = [('999', 'Todas'),
+                  ('Efetuada', 'Efetuada'),
+                  ('Negada', 'Negada'),
+                  ('Cancelada', 'Cancelada'),
+                  ('Desfeita', 'Desfeita'),
+                  ('Pendente', 'Pendente'),
+                  ('TimeOut', 'TimeOut')
+                  ]
+
+    codLoja = forms.ChoiceField(label='Loja',
+                                widget=forms.Select)
+
+    dataInicial = forms.DateField(label="Data inicial",
+                                  widget=forms.SelectDateWidget,
+                                  )
+    dataFinal = forms.DateField(label="Data final",
+                                widget=forms.SelectDateWidget)
+    statusTRN = forms.ChoiceField(label='Status Transação',
+                                  widget=forms.Select,
+                                  choices=STATUS_TRN)
+    nomeAdiq = forms.ChoiceField(label='Adquirente',
+                                 widget=forms.Select
+                                 )
+    nomeBan = forms.ChoiceField(label='Bandeiras',
+                                widget=forms.Select)
+
+
+class RegLogForm(forms.Form):
+
+    """ Form para exibição de um registro do Log """
+
+    NSU_TEF = forms.IntegerField(label="NSU TEF", disabled=True)
+    NSU_HOST = forms.IntegerField(label="NSU Adquirente", disabled=True)
+    dataHoraHost = forms.DateTimeField(label="Data/Hora", disabled=True)
+    nomeLoja = forms.CharField(label="Loja",
+                               max_length=50, disabled=True)
+    codPDV = forms.IntegerField(label="PDV", disabled=True)
+    codTRN = forms.CharField(label="Transação",
+                             max_length=20, disabled=True)
+    numParcelas = forms.IntegerField(label="Parcelas",
+                                     disabled=True)
+    statusTRN = forms.CharField(label="Status",
+                                max_length=20, disabled=True)
+    codResp = forms.IntegerField(label="Cod. Retorno",
+                                 disabled=True)
+    msgResp = forms.CharField(label="Msg. Retorno",
+                              max_length=50, disabled=True)
+    numCartao = forms.CharField(label="Cartão",
+                                max_length=20, disabled=True)
+    valorTrans = forms.DecimalField(label="Valor",
+                                    decimal_places=2,
+                                    max_digits=10, disabled=True)
+    nomeBan = forms.CharField(label="Bandeira",
+                              max_length=50, disabled=True)
+    nomeAdiq = forms.CharField(label="Adquirente",
+                               max_length=50, disabled=True)
 
 
 class CustomUserCreationForm(UserCreationForm):

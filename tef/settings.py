@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'servtef',
+    'rest_framework',
 ]
 
 MIDDLEWARE = [
@@ -112,7 +113,7 @@ TIME_ZONE = 'America/Sao_Paulo'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -120,9 +121,30 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+REST_FRAMEWORK = {
+    # Use Django's standard `django.contrib.auth` permissions,
+    # or allow read-only access for unauthenticated users.
+    'DEFAULT_PERMISSION_CLASSES': [],
+    'TEST_REQUEST_DEFAULT_FORMAT': 'json'
+}
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_REDIRECT_URL = 'servtef:dashboard'
 LOGOUT_REDIRECT_URL = "servtef:dashboard"
+
+DATE_INPUT_FORMATS = [
+    '%Y-%m-%d',  # '2006-10-25'
+    '%m/%d/%Y',  # '10/25/2006'
+    '%m/%d/%y',  # '10/25/06'
+    '%b %d %Y',  # 'Oct 25 2006'
+    '%b %d, %Y',  # 'Oct 25, 2006'
+    '%d %b %Y',  # '25 Oct 2006'
+    '%d %b, %Y',  # '25 Oct, 2006'
+    '%B %d %Y',  # 'October 25 2006'
+    '%B %d, %Y',  # 'October 25, 2006'
+    '%d %B %Y',  # '25 October 2006'
+    '%d %B, %Y',  # '25 October, 2006'
+]

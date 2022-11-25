@@ -1,0 +1,102 @@
+<!-- servtef/templates/servtef/lista.DadosPDV.html -->
+
+{% extends 'base.html' %}
+
+{% block content %}
+
+
+  <div class="column is-one-half">
+  <a href="{% url 'servtef:dashboard'%}">
+    <div class="box">
+        <p></p>
+        <p class="title is-5 has-text-centered">
+        PDV´s da loja {{ nomeloja }}
+        </p>
+    </div>
+
+    {% for pdv in pdvs %}
+
+    <div class="message is-info">
+
+    <div class="field is-horizontal is-normal">
+            <div class="field-label">
+                <label class="label">Numero PDV: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ pdv.codPDV }} </label>
+                    </div>
+                </div>
+            </div>
+            <div class="field-label">
+                <label class="label">Usuario ativo: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label">{{ pdv.UsuarioAtivo }} </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="field-label ">
+                <label class="label">Inicializado: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        {% if pdv.StatusPDV %}
+                            <label class="label ">Sim </label>
+                        {% else %}
+                            <label class="label ">Não </label>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="field-label ">
+                <label class="label">Ultimo Login: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <label class="label ">{{ pdv.LastLogin }} </label>
+                    </div>
+                </div>
+            </div>
+            <div class="field-label ">
+                <label class="label">Transações habilitadas: </label>
+            </div>
+            <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        <ul>
+                            {% if pdv.TransDigitado %}
+                            <li>Crédito digitado</li>
+                            {% endif %}
+                            {% if pdv.TransVendaCreditoVista %}
+                            <li>Crédito à vista</li>
+                            {% endif %}
+                            {% if pdv.TransVendaCreditoParc %}
+                            <li>Crédito parcelado c/ juros</li>
+                            {% endif %}
+                            {% if pdv.TransVendaCreditoSemJuros %}
+                            <li>Crédito parcelado s/ juros</li>
+                            {% endif %}
+                            {% if pdv.TransVendaDebito %}
+                            <li>Débito</li>
+                            {% endif %}
+                            {% if pdv.TransCancelamento %}
+                            <li>Cancelamento</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+    </div>
+    </div>
+    {% endfor %}
+  </a>
+  </div>
+
+{% endblock content %}

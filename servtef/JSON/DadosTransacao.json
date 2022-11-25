@@ -1,0 +1,14 @@
+{
+   "headerIn": {
+      "transação": "DadosTrans",
+      "empresa": 1,
+      "loja": 2,
+      "pdv": 2
+   },
+   "usuario": "operCentro",
+   "numCartao": "5536360607552502",
+   "validadeCartao": "0723",
+   "codSeg": "445",
+   "valorTrans": 10.50,
+   "tipoTrans": "tipo da transação - débito/crédito/cancelamento"
+}
