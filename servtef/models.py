@@ -11,6 +11,7 @@ class Empresa(models.Model):
     nomeEmp = models.CharField(max_length=50)
     CNPJ = models.CharField(max_length=14)
     ultimoNSU = models.IntegerField(default=0)
+    URLServer = models.URLField(null=True)
 
 
 class Loja(models.Model):
@@ -20,6 +21,8 @@ class Loja(models.Model):
     )
     nomeLoja = models.CharField(max_length=50)
     CNPJ = models.CharField(max_length=14)
+    chave = models.BinaryField(max_length=150, null=True)
+
 
 
 class PDV(models.Model):

@@ -28,7 +28,8 @@ DadosLogin = {
         "pdv": 2
     },
     "usuario": "operCentro",
-    "senha": "**********"
+    "senha": "**********",
+    "inicializaLoja": True
 }
 
 DadosAberturaIn = {
@@ -63,7 +64,6 @@ DadosVendaCreditoIn = {
     "validadeCartao": "07/23",
     "codSeg": "445",
     "valorTrans": 10.50,
-    "tipoTrans": "tipo da transação - débito/crédito/cancelamento",
     "numParcelas": 0
 }
 
@@ -77,8 +77,8 @@ DadosVendaCreditoOut = {
     "bandeira": "string",
     "adquirente": "string",
     "codAut": "string",
-    "NSUTef": "string",
-    "NSUHost": "string",
+    "NSU_TEF": "string",
+    "NSU_HOST": "string",
     "dataHoraTrans": "data/hora aprovação",
     "cupomTrans": "comprovante",
 }
@@ -120,7 +120,9 @@ DadosCancelamento = {
     "numCartao": "5536360607552502",
     "valorTrans": 10.50,
     "validadeCartao": "07/23",
-    "NSU_HOST_Original": "1234567890"
+    "NSU_HOST_Original": "1234567890",
+    "supervisor": "janete",
+    "senha": "*******"
 }
 
 DadosCancelamentoOut = {
@@ -136,3 +138,18 @@ DadosCancelamentoOut = {
     "dataHoraTrans": "data/hora aprovação",
     "cupomTrans": "comprovante",
 }
+
+DadosPesqLog = {
+    "headerIn": {
+        "transação": "PesqLog",
+        "empresa": 1,
+        "loja": 2,
+        "pdv": 2
+    },
+    "usuario": "operCentro",
+    "NSU": 273,
+    "dataInicial": "data inicial para pesquisa",
+    "dataFinal": "data final para pesquisa",
+    "statusTrans": "status da transação"
+}
+

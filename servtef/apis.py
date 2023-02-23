@@ -1,6 +1,7 @@
 import datetime
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, parser_classes
+from rest_framework.parsers import BaseParser, JSONParser
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -9,14 +10,32 @@ from django.db.models.functions import Now
 from django.contrib.auth.hashers import check_password
 
 from . import models
+from .serializer import LogSerializer
 from .JSON.json import DadosInicializaIn, DadosTransacaoIn, \
     DadosAberturaIn, DadosVendaCreditoIn, \
-    DadosConfirmacao, DadosCancelamento, DadosLogin
+    DadosConfirmacao, DadosCancelamento, DadosLogin, DadosPesqLog
 
 from cryptography.fernet import Fernet
+import json
 
 from .rotauxiliares import RotinasAuxiliares
 
+
+class PlainTextParser(BaseParser):
+    """
+    Plain text parser.
+        Utilizado para receber mensagens originadas no PDV Kivy, que não consegue enviar msgs JSON. Devido ao método
+        do Twisted utilizado, as msgs chegam em JSON mas encapsuladas em bytes Plain Text.
+    """
+    media_type = 'text/plain'
+
+    def parse(self, stream, media_type=None, parser_context=None):
+        """
+        Transforma as mensagens recebidas em bytes para string.
+        """
+        msg = stream.read ()
+        msg = msg.decode()
+        return msg
 
 @api_view(['PUT'])
 def InicializaPDV(request):
@@ -45,46 +64,46 @@ def InicializaPDV(request):
     rotAux = RotinasAuxiliares(request.data)
 
     if not rotAux.setUp(DadosInicializaIn):
-        return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         user = User.objects.get(username=rotAux.usuario)
     except User.DoesNotExist:
         rotAux.MontaHeaderOut(1, f'Usuario {rotAux.usuario} não existe')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         loja = models.Loja.objects.get(empresa=rotAux.cod_empresa, codLoja=rotAux.cod_loja)
     except models.Loja.DoesNotExist:
         rotAux.MontaHeaderOut(2, f'Loja/empresa {rotAux.cod_loja}/{rotAux.cod_empresa} não existe')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         pdv = models.PDV.objects.get(empresa=rotAux.cod_empresa, loja=rotAux.cod_loja, codPDV=rotAux.cod_pdv)
     except models.PDV.DoesNotExist:
         rotAux.MontaHeaderOut(3, f'PDV {rotAux.cod_pdv} não existe para a loja {rotAux.cod_loja}')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         userTEF = models.UsuarioTEF.objects.get(empresa=rotAux.cod_empresa, loja=rotAux.cod_loja, user=user.id)
     except models.UsuarioTEF.DoesNotExist:
         rotAux.MontaHeaderOut(4, f'Usuario {rotAux.usuario} não é desta loja')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if userTEF.perfil_user != 3:
         rotAux.MontaHeaderOut(5, f'Usuario {rotAux.usuario} não tem premissão para inicializar PDV')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     pdv.StatusPDV = True
     pdv.save()
     rotAux.MontaHeaderOut(0, f'Pdv {rotAux.cod_pdv} inicializado')
-    return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT
+    return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
 
 
-@api_view(['PUT'])
-def LoginUsuario(request):
-
+@api_view(['PUT', 'POST'])
+@parser_classes([JSONParser, PlainTextParser]) # PlainTextParser é para quando a msg não vem no formato JSON
+def LoginUsuario(request, format=None):
     """ Login de um usuário em um PDV, para início de sessão
         - verifica se o usuária está cadastrado
         - verifica senha
@@ -100,6 +119,7 @@ def LoginUsuario(request):
                           }
                 "usuario": <string>
                 "senha" : <string>
+                "inicializaLoja": True
             }
         JSON de saída:
             {
@@ -107,53 +127,96 @@ def LoginUsuario(request):
                               "codErro": <digit>,
                               "mensagem": <string>,
                              }
+                "empresa": <digit>,
+                "loja": <digit>,
+                "PDV": <digit>,
                 "perfil": <digit>
             }
     """
+    print(f'Msg rec= {request.data}')
+    print(f'Formato = {request.content_type}')
+
     rotAux = RotinasAuxiliares(request.data)
 
+    if request.content_type == "text/plain":
+        """ Neste caso, o PDV não consegue enviar a msg em JSON. O dicionário vem encapsulado em um string"""
+        rotAux.buffer_entrada = rotAux.geraJSON(DadosLogin, request.data)
+
     if not rotAux.setUp(DadosLogin):
-        return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT)
+        print(f'Msg env= {rotAux.buffer_resposta}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         user = User.objects.get(username=rotAux.usuario)
     except User.DoesNotExist:
         rotAux.MontaHeaderOut(1, f'Usuario {rotAux.usuario} não existe')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        print(f'Msg env= {rotAux.buffer_resposta}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
-    if not check_password(rotAux.buffer_entrada['senha'], user.password):
-        rotAux.MontaHeaderOut(106, f'{rotAux.TAB_MSG[106]}')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+    if rotAux.buffer_entrada['inicializaLoja']:
+        """ A loja ainda não está inicializada localmente. 
+            Devolve na mensagem os dados da loja cadastrada para o usuário que está fazendo o Login
+            e não checa usuário/loja. A senha não vem criptografada, pois ainda não existe a chave
+            para criptografar. A chave será devolvida na mensagem
+            Se o perfil for gerente de loja, ele poderá inicializar a loja
+            """
+        try:
+            userTEF = models.UsuarioTEF.objects.get(user=user.id)
+        except models.UsuarioTEF.DoesNotExist:
+            rotAux.MontaHeaderOut(1, f'Usuario {rotAux.usuario} não existe')
+            print(f'Msg env= {rotAux.buffer_resposta}')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
-    try:
-        userTEF = models.UsuarioTEF.objects.get(empresa=rotAux.cod_empresa,
-                                                loja=rotAux.cod_loja,
-                                                user=user.id)
-    except models.UsuarioTEF.DoesNotExist:
-        rotAux.MontaHeaderOut(4, f'Usuario {rotAux.usuario} não é desta loja')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        '''Checa a senha sem criptografia '''
+        if not check_password(rotAux.buffer_entrada['senha'], user.password):
+            rotAux.MontaHeaderOut(106, f'{rotAux.TAB_MSG[106]}')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+        loja = models.Loja.objects.get(empresa=userTEF.empresa.codEmp,
+                                       codLoja=userTEF.loja.codLoja)
+        rotAux.buffer_resposta['chave'] = bytes(loja.chave)  # retorna a chave de criptogradia para a loja
+    else:
+        try:
+            userTEF = models.UsuarioTEF.objects.get(empresa=rotAux.cod_empresa,
+                                                    loja=rotAux.cod_loja,
+                                                    user=user.id)
+        except models.UsuarioTEF.DoesNotExist:
+            rotAux.MontaHeaderOut(4, f'Usuario {rotAux.usuario} não é desta loja')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        loja = models.Loja.objects.get(empresa=rotAux.cod_empresa,
+                                       codLoja=rotAux.cod_loja)
+        ''' Decriptografa a senha '''
+        senhaCriptoBytes = rotAux.buffer_entrada['senha'].encode()  # transforma a senha recebida em bytes
+        cripto = Fernet(loja.chave)
+        senha = cripto.decrypt(senhaCriptoBytes)
+        if not check_password(senha, user.password):
+            rotAux.MontaHeaderOut(106, f'{rotAux.TAB_MSG[106]}')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if userTEF.perfil_user != 4 and userTEF.perfil_user != 3:
         rotAux.MontaHeaderOut(5, f'Usuario {rotAux.usuario} não é operador de PDV')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
-    try:
-        pdv = models.PDV.objects.get(empresa=rotAux.cod_empresa,
-                                     loja=rotAux.cod_loja,
-                                     codPDV=rotAux.cod_pdv)
-    except models.PDV.DoesNotExist:
-        rotAux.MontaHeaderOut(3, f'PDV {rotAux.cod_pdv} não existe para a loja {rotAux.cod_loja}')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+    if not rotAux.buffer_entrada['inicializaLoja']:
+        try:
+            pdv = models.PDV.objects.get(empresa=rotAux.cod_empresa,
+                                         loja=rotAux.cod_loja,
+                                         codPDV=rotAux.cod_pdv)
+        except models.PDV.DoesNotExist:
+            rotAux.MontaHeaderOut(3, f'PDV não inicializado')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
-    pdv.UsuarioAtivo = 0
-    pdv.LastLogin = Now()
-    pdv.save()
+        pdv.UsuarioAtivo = 0
+        pdv.LastLogin = Now()
+        pdv.save()
 
     rotAux.MontaHeaderOut(0, f'Login efetuado')
-
-    return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT
+    rotAux.buffer_resposta['perfil'] = userTEF.perfil_user
+    rotAux.buffer_resposta['empresa'] = userTEF.empresa.codEmp
+    rotAux.buffer_resposta['loja'] = userTEF.loja.codLoja
+    rotAux.buffer_resposta['codPDV'] = rotAux.cod_pdv
+    return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
-
 
 
 @api_view(['PUT'])
@@ -192,13 +255,13 @@ def AberturaPDV(request):
     rotAux = RotinasAuxiliares(request.data)
 
     if not rotAux.setUp(DadosAberturaIn):
-        return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         user = User.objects.get(username=rotAux.usuario)
     except User.DoesNotExist:
         rotAux.MontaHeaderOut(1, f'Usuario {rotAux.usuario} não existe')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         userTEF = models.UsuarioTEF.objects.get(empresa=rotAux.cod_empresa,
@@ -206,11 +269,11 @@ def AberturaPDV(request):
                                                 user=user.id)
     except models.UsuarioTEF.DoesNotExist:
         rotAux.MontaHeaderOut(4, f'Usuario {rotAux.usuario} não é desta loja')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if userTEF.perfil_user != 4:
         rotAux.MontaHeaderOut(5, f'Usuario {rotAux.usuario} não é operador de PDV')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     try:
         pdv = models.PDV.objects.get(empresa=rotAux.cod_empresa,
@@ -218,15 +281,15 @@ def AberturaPDV(request):
                                      codPDV=rotAux.cod_pdv)
     except models.PDV.DoesNotExist:
         rotAux.MontaHeaderOut(3, f'PDV {rotAux.cod_pdv} não existe para a loja {rotAux.cod_loja}')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if not pdv.StatusPDV:
         rotAux.MontaHeaderOut(6, f'PDV {rotAux.cod_pdv} não está inicializado')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if pdv.UsuarioAtivo != 0 and pdv.UsuarioAtivo != user.id:
         rotAux.MontaHeaderOut(7, f'PDV {rotAux.cod_pdv} já está aberto para usuário {user.id}')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_404_NOT_FOUND)
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     pdv.UsuarioAtivo = user.id
     pdv.LastLogin = Now()
@@ -241,7 +304,7 @@ def AberturaPDV(request):
     TransHabilitadas['TransCancelamento'] = pdv.TransCancelamento
     rotAux.buffer_resposta['TransHabilitadas'] = TransHabilitadas
 
-    return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT
+    return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
 
 
@@ -323,7 +386,7 @@ def DadosTransacao(request):
     num_cartao = rotAux.buffer_entrada["numCartao"]
     Bin = num_cartao[0:4]
     rotAux.buffer_resposta['BIN'] = Bin
-    return Response(rotAux.buffer_resposta, status=status.HTTP_204_NO_CONTENT
+    return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
 
 
@@ -372,6 +435,13 @@ def VendaCredito(request):
     if not rotAux.ValidacoesBasicas():
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
+    ''' Decriptografa o cartão '''
+    cartaoCriptoBytes = rotAux.buffer_entrada['numCartao'].encode()  # transforma o cartão recebido em bytes
+    cripto = Fernet(rotAux.lojaAtual.chave)
+    cartao = cripto.decrypt(cartaoCriptoBytes)
+    cartao = cartao.decode()
+    rotAux.buffer_entrada["numCartao"] = cartao
+
     if not rotAux.ValidaCartao():
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
@@ -405,7 +475,7 @@ def VendaCredito(request):
 
     rotAux.MontaMsgHost(rotAux.buffer_entrada['headerIn']['transação'], roteamento.adiq)
 
-    if not rotAux.EnviaRecebeMsgHost(roteamento.adiq.nomeAdiq): # erro de comunicação com a adquirente
+    if not rotAux.EnviaRecebeMsgHost(roteamento.adiq.nomeAdiq):  # erro de comunicação com a adquirente
         # rotAux.MontaHeaderOut(0, f'Transação OK')
         rotAux.buffer_resposta['codRespAdiq'] = 100
         rotAux.buffer_resposta['msgAdiq'] = rotAux.TAB_MSG[100]
@@ -521,6 +591,8 @@ def Cancelamento(request):
                     "valorTrnas": 10.50,
                     "dataValidade": "07/23",
                     "NSU_HOST_Original": "1234567890",
+                    "supervisor": "super"
+                    "senha": "******"
                     }
 
         JSON de saída:
@@ -546,6 +618,36 @@ def Cancelamento(request):
     if not rotAux.ValidacoesBasicas():
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
+    """ Valida o supervisor """
+    try:
+        super = User.objects.get(username=rotAux.buffer_entrada['supervisor'])
+    except User.DoesNotExist:
+        rotAux.MontaHeaderOut(1, f'Supervisor {rotAux.buffer_entrada["supervisor"]} não existe')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    try:
+        userTEF = models.UsuarioTEF.objects.get(empresa=rotAux.cod_empresa,
+                                                loja=rotAux.cod_loja,
+                                                user=super.id)
+    except models.UsuarioTEF.DoesNotExist:
+        rotAux.MontaHeaderOut(4, f'Supervisor {rotAux.buffer_entrada["supervisor"]} não é desta loja')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    loja = models.Loja.objects.get(empresa=rotAux.cod_empresa,
+                                   codLoja=rotAux.cod_loja)
+
+    ''' Decriptografa e valida a senha do supervisor '''
+    senhaCriptoBytes = rotAux.buffer_entrada['senha'].encode()  # transforma a senha recebida em bytes
+    cripto = Fernet(loja.chave)
+    senha = cripto.decrypt(senhaCriptoBytes)
+    if not check_password(senha, super.password):
+        rotAux.MontaHeaderOut(106, f'{rotAux.TAB_MSG[106]}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if userTEF.perfil_user != 3:
+        rotAux.MontaHeaderOut(5, f'Usuario {rotAux.buffer_entrada["supervisor"]} não é supervisor')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
     if not rotAux.ValidaCartao():
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
@@ -555,6 +657,10 @@ def Cancelamento(request):
         log = models.LogTrans.objects.get(NSU_TEF=rotAux.buffer_entrada['NSU_Original'])
     except models.LogTrans.DoesNotExist:
         rotAux.MontaHeaderOut(101, f'{rotAux.TAB_MSG[101]}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if log.statusTRN != 'Efetuada' or log.codTRN == 'Cancelamento':
+        rotAux.MontaHeaderOut(107, f'{rotAux.TAB_MSG[107]}')
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     dataTransLog = log.dataLocal
@@ -618,8 +724,78 @@ def Cancelamento(request):
 
 
 @api_view(['PUT'])
-def TrataSonda(request):
+def PesqTransLog(request):
+    """ Pesquisa transações no Log.
+        A pesquisa pode ser por um NSU específico ou por um período
 
+        JSON de entrada:
+                    {
+                       "headerIn": {
+                          "transação": "PesqLog",
+                          "empresa": 1,
+                          "loja": 2,
+                          "pdv": 2
+                       },
+                    "NSU": "1234567890",
+                    "dataInicial": "data inicial para pesquisa",
+                    "dataFinal": "data final para pesquisa"
+                    "statusTrans": "status da transação",
+                    "adquirente": "adquirente",
+                    "bandeira": "bandeira",
+                    }
+    """
+    rotAux = RotinasAuxiliares(request.data)
+
+    if not rotAux.setUp(DadosPesqLog):
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if not rotAux.ValidacoesBasicas():
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if rotAux.buffer_entrada['NSU'] != 0:  # retorna somente o registro da NSU fornecida
+        try:
+            log = models.LogTrans.objects.get(NSU_TEF=rotAux.buffer_entrada['NSU'])
+        except models.LogTrans.DoesNotExist:
+            rotAux.MontaHeaderOut(101, f'{rotAux.TAB_MSG[101]}')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        serializer = LogSerializer(log)
+        serializer.data['status'] = 0
+        print(serializer.data)
+        return Response(serializer.data)
+
+    """ Retorna os registros do Log, de acordo com o filtro fornecido na msg """
+
+    dt_inicial = rotAux.buffer_entrada["dataInicial"]
+    dt_final = rotAux.buffer_entrada["dataFinal"]
+    loja = rotAux.cod_loja
+    pdv = rotAux.buffer_entrada['headerIn']['pdv']
+    statusTRN = rotAux.buffer_entrada["statusTrans"]
+
+    """ Filtro inicial por PDV e pelo período solicitado """
+
+    log = models.LogTrans.objects.filter(codEmp=rotAux.cod_empresa,
+                                         codLoja=loja,
+                                         codPDV=pdv,
+                                         dataLocal__gte=dt_inicial,
+                                         dataLocal__lte=dt_final,
+                                         ).order_by("dataHoraHost")
+
+    """ Filtro por status da transação. """
+
+    if statusTRN != 'Todas':
+        log = log.filter(statusTRN=statusTRN)
+
+    if not log:
+        rotAux.MontaHeaderOut(108, f'{rotAux.TAB_MSG[108]}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    serializer = LogSerializer(log, many=True)
+    # print(serializer.data)
+    return Response(serializer.data)
+
+
+@api_view(['PUT'])
+def TrataSonda(request):
     """ Trata mensagem de sonda, enviada pela adquirente
 
         JSON de entrada e saída:
@@ -632,7 +808,7 @@ def TrataSonda(request):
     """
     rotAux = RotinasAuxiliares(request.data)
 
-    print ('---> Msg Rec. <----\n')
+    print('---> Msg Rec. <----\n')
     print(rotAux.buffer_entrada, '\n')
 
     try:

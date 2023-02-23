@@ -125,7 +125,7 @@ REST_FRAMEWORK = {
     # Use Django's standard `django.contrib.auth` permissions,
     # or allow read-only access for unauthenticated users.
     'DEFAULT_PERMISSION_CLASSES': [],
-    'TEST_REQUEST_DEFAULT_FORMAT': 'json'
+    # 'TEST_REQUEST_DEFAULT_FORMAT': 'json'
 }
 
 # Default primary key field type
@@ -148,3 +148,7 @@ DATE_INPUT_FORMATS = [
     '%d %B %Y',  # '25 October 2006'
     '%d %B, %Y',  # '25 October, 2006'
 ]
+
+# para deploy no heroku
+import django_heroku
+django_heroku.settings(locals())

@@ -155,14 +155,17 @@ class SelecaoLogForm(forms.Form):
                   ('TimeOut', 'TimeOut')
                   ]
 
+    ANOS = ['2022', '2023', '2024']
+
     codLoja = forms.ChoiceField(label='Loja',
                                 widget=forms.Select)
 
     dataInicial = forms.DateField(label="Data inicial",
-                                  widget=forms.SelectDateWidget,
+                                  widget=forms.SelectDateWidget(years=ANOS)
                                   )
     dataFinal = forms.DateField(label="Data final",
-                                widget=forms.SelectDateWidget)
+                                widget=forms.SelectDateWidget(years=ANOS)
+                                )
     statusTRN = forms.ChoiceField(label='Status Transação',
                                   widget=forms.Select,
                                   choices=STATUS_TRN)
@@ -202,6 +205,10 @@ class RegLogForm(forms.Form):
                               max_length=50, disabled=True)
     nomeAdiq = forms.CharField(label="Adquirente",
                                max_length=50, disabled=True)
+    NSU_Canc = forms.IntegerField(label="NSU Cancelamento", disabled=True)
+    dataHoraCanc = forms.DateTimeField(label="Data Cancelamento", disabled=True)
+
+
 
 
 class CustomUserCreationForm(UserCreationForm):

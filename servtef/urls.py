@@ -50,5 +50,6 @@ urlpatterns = [
     path("api/v1/vendacredito", apis.VendaCredito, name="vendacredito"),  # venda com cartão de crédito
     path("api/v1/confirmadesfaz", apis.ConfirmaDesfazTrans, name="confirmadesfaz"),  # confirmação/desfazimento de transação
     path("api/v1/cancelamento", apis.Cancelamento, name="cancelamento"),  # cancelamento de transação
+    path("api/v1/pesqtranslog", apis.PesqTransLog, name="pesqtranslog"),  # pesquisa transações no Log
     path("api/v1/sonda", apis.TrataSonda, name="sonda"),  # trata mensagem de sonda envidada pelo adquirente
 ]

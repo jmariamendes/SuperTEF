@@ -1,4 +1,8 @@
+
+""" Rotinas auxiliares e variáveis globais """
+
 import datetime
+import re
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -8,12 +12,10 @@ import requests
 from requests.exceptions import HTTPError
 from requests.exceptions import Timeout
 
-
 from . import models
 
 
 class RotinasAuxiliares():
-    """ Rotinas auxiliares e variáveis globais """
 
     TAB_MSG = {
         0: "0 - Transação OK",
@@ -38,6 +40,7 @@ class RotinasAuxiliares():
         103: "103 - Dado cancelamento inválido - cartão",
         104: "102 - Dado cancelamento inválido - valor",
         105: "102 - Dado cancelamento inválido - NSU Host",
+        106: "106 - Senha inválida",
     }
 
     BINS = ('3',  # amex
@@ -55,7 +58,8 @@ class RotinasAuxiliares():
                  'CredParcComJuros',
                  'DadosTrans',
                  'Confirma',
-                 'Desfazimento'
+                 'Desfazimento',
+                 'PesqLog'
                  )
 
     buffer_entrada = {}  # JSON de entrada
@@ -70,7 +74,7 @@ class RotinasAuxiliares():
             0: '0 - Transação OK',
             1: "1 - Usuario {self.usuario} não existe",
             2: "2 - Loja/empresa {rotAux.cod_loja}/{rotAux.cod_empresa} não existe",
-            3: "3 - PDV {rotAux.cod_pdv} não existe para a loja {rotAux.cod_loja}",
+            3: "3 - PDV não inicializado",
             4: "4 - Usuario {rotAux.usuario} não é desta loja",
             5: "5 - Usuario {rotAux.usuario} não tem premissão para inicializar PDV",
             6: "6 - PDV {rotAux.cod_pdv} não está inicializado",
@@ -88,8 +92,10 @@ class RotinasAuxiliares():
             102: "102 - Dado cancelamento inválido - data/hora",
             103: "103 - Dado cancelamento inválido - cartão",
             104: "104 - Dado cancelamento inválido - valor",
-            105: "102 - Dado cancelamento inválido - NSU Host",
+            105: "105 - Dado cancelamento inválido - NSU Host",
             106: "106 - Senha inválida",
+            107: "107 - Dado cancelamento inválido - Transação",
+            108: "108 - Não existem registros para esta seleção"
         }
         self.bandeira = ''
         self.userTEFAtual = None
@@ -110,12 +116,14 @@ class RotinasAuxiliares():
 
         for campo, valor in LayOut.items():
             if campo not in self.buffer_entrada:
+                print(campo)
                 self.MontaHeaderOut(13, self.TAB_MSG [13])
                 return False
             else:
                 if isinstance(valor, dict):
                     for i in valor:
                         if i not in self.buffer_entrada[campo]:
+                            print(i)
                             self.MontaHeaderOut(13, self.TAB_MSG [13])
                             return False
 
@@ -129,6 +137,53 @@ class RotinasAuxiliares():
         self.cod_pdv = int(self.headerIn["pdv"])
         self.usuario = self.buffer_entrada["usuario"]
         return True
+
+    def geraJSON(self, dicionario, msg):
+
+        """ Converte a msg recebida em string para o dicionário JSON.
+            Para a conversão serõa utilizados como base os campos do dicionário e os valores correspondentes aos campos,
+            serão retirados da msg.
+            Não será feita nenhuma consistência, porque acredita-se que a msg de entrada é uma cópia fiel do dicionário,
+            mas em formato string """
+
+        for campo, valor in dicionario.items():
+            """ Acessa todos as chaves do dicionário. Para cada chave, procura o campo correspondente na msg e atribui o valor 
+                deste campo na msg à chave no dicionário"""
+            if isinstance(valor, dict):         # campo é um sub-dicionário do dicionário
+                self.geraJSON(valor, msg) # chama de novo a geraJSON, passando o sub-dicionario como parametro.
+                continue
+
+            result = re.finditer(r"" + campo + "': ", msg) # procura a chave na msg, para atribuir o valor
+            for i in result: # não existe chave duplicada no dict, então este for é somente porque não consigo acessar
+                             # o resultado de outra forma
+                inicio = i.start(0)
+                fim = i.end(0)
+
+            if msg[fim] == "'": # valor é alfanumérico, delimitado por '', elimina o '
+                fim += 1
+                numerico = False
+            else:
+                numerico = True
+
+            resultVal = re.finditer(r"[A-Za-z0-9]+", msg[fim:len(msg)]) # extrai o valor desta chave na msg
+            for j in resultVal: # sempre pega o primeiro valor da pesquisa
+                inicio = j.start(0)
+                fim = j.end(0)
+                valcampo = j.group(0)
+                if numerico:
+                    dicionario[campo] = int(j.group(0))
+                else:
+                    dicionario[campo] = j.group(0)
+                break
+
+        """ obs.: todo parametro do tipo dicionario é passado como referencia pelo Python, então não precisaria dar
+            o return com o valor da variável. Isto foi colocado somente para deixar mais documentado. """
+        return dicionario
+
+
+
+
+
 
     def MontaHeaderOut(self, codErro, mensagem):
         self.headerOut['codErro'] = codErro

@@ -56,7 +56,7 @@
             <div class="field-body">
                 <div class="field">
                     <div class="control">
-                        <label class="input is-small ">{{ log.dataLocal }} </label>
+                        <label class="input is-small ">{{ log.dataLocal | date:"SHORT_DATE_FORMAT"}} </label>
                     </div>
                 </div>
             </div>
@@ -79,6 +79,30 @@
                 <div class="field">
                     <div class="control">
                         <label class="input is-small ">{{ log.statusTRN }} </label>
+                    </div>
+                </div>
+           </div>
+
+           <div class="field-label is-small">
+                <label class="label">Trans: </label>
+           </div>
+           <div class="field-body">
+                <div class="field">
+                    <div class="control">
+                        {% if log.codTRN == 'Cancelamento' %}
+                            <label class="input is-small ">Cancel. </label>
+                        {% elif log.codTRN == 'CredVista' %}
+                            <label class="input is-small ">Crédito </label>
+                        {% elif log.codTRN == 'CredParc' %}
+                            <label class="input is-small ">Parcelado </label>
+                        {% elif log.codTRN == 'CredParcComJuros' %}
+                            <label class="input is-small ">Parcelado </label>
+                        {% elif log.codTRN == 'Debito' %}
+                            <label class="input is-small ">Débito </label>
+                        {% else %}
+                            <label class="input is-small ">{{ log.codTRN }}</label>
+                        {% endif %}
+
                     </div>
                 </div>
            </div>

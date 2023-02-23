@@ -7,6 +7,7 @@ from django.forms import modelformset_factory
 from django.core.paginator import Paginator
 
 import datetime
+from cryptography.fernet import Fernet
 
 from . import forms
 from .models import UsuarioTEF, Empresa, Loja, PDV, LogTrans, Bandeira, Adquirente, NumLogico, Roteamento, PerfilUsuario
@@ -280,10 +281,14 @@ def IncluiLoja(request):
                                     Q(codLoja=int(data.get("codLoja")))
                                     )
         except Loja.DoesNotExist:
+            chaveCripto = Fernet.generate_key() # cria chave de criptografia da senha do usuário.
+                                                # quando o usuário faz o Login na loja,
+                                                # a senha é enviada criptografa para o servidor
             dados_loja = Loja(codLoja=int(data.get("codLoja")),
                               empresa=userTEF.empresa,
                               nomeLoja=data.get("nomeLoja"),
-                              CNPJ=data.get("CNPJ")
+                              CNPJ=data.get("CNPJ"),
+                              chave=chaveCripto
                               )
             dados_loja.save()
         else:
@@ -374,10 +379,13 @@ def AlteraExcluiLoja(request, oper):
             form_loja = forms.LojaForm(request.POST)
             cod_loja = int(data.get('codLoja'))
             if oper == 'altera':
+                chaveCripto = Fernet.generate_key() # cria chave de criptografia. Isto é
+                                                    # temporário. Só se deve criar na inclusão de loja nova
                 dados_loja = Loja(codLoja=cod_loja,
                                   empresa=userTEF.empresa,
                                   nomeLoja=data.get("nomeLoja"),
-                                  CNPJ=data.get("CNPJ")
+                                  CNPJ=data.get("CNPJ"),
+                                  chave=chaveCripto
                                   )
                 dados_loja.save()
                 msg = f'Loja {cod_loja} alterada com sucesso'
@@ -1196,6 +1204,8 @@ def SelecionaRegLog(request):
         LISTA.append(aux[:])
         aux.clear()
     form_Sel.fields['nomeBan'].choices = LISTA
+    form_Sel.fields['dataFinal'].initial = datetime.date.today()
+    form_Sel.fields['dataInicial'].initial = datetime.date.today()
 
     if request.method == "GET":
         return render(request, "servtef/seleciona.Pend.html", {"form": form_Sel,
@@ -1338,6 +1348,10 @@ def ExibeRegLog(request, pk):
                      'nomeBan': reg_Log.nomeBan,
                      'nomeAdiq': reg_Log.nomeAdiq
                      }
+
+    if reg_Log.statusTRN == 'Cancelada':
+        valor_inicial ['NSU_Canc'] = reg_Log.NSU_Canc
+        valor_inicial ['dataHoraCanc'] = reg_Log.dataHoraCanc
 
     form_Log = forms.RegLogForm(initial=valor_inicial)
 
