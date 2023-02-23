@@ -7,7 +7,7 @@ from . import apis
 app_name = "servtef"
 
 urlpatterns = [
-    path("", views.dashboard, name="dashboard"),
+    path("login/", views.dashboard, name="dashboard"),
     path("accounts/", include("django.contrib.auth.urls")),
     path("register/", views.register, name="register"),
     path("dadosadicionais/<int:pk>", views.dados_adicionais, name="dadosadicionais"),
