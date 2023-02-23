@@ -101,9 +101,9 @@ def InicializaPDV(request):
                     )
 
 
-@api_view(['PUT', 'POST'])
-@parser_classes([JSONParser, PlainTextParser]) # PlainTextParser é para quando a msg não vem no formato JSON
-def LoginUsuario(request, format=None):
+@api_view(['PUT'])
+# @parser_classes([JSONParser, PlainTextParser]) # PlainTextParser é para quando a msg não vem no formato JSON
+def LoginUsuario(request):
     """ Login de um usuário em um PDV, para início de sessão
         - verifica se o usuária está cadastrado
         - verifica senha
