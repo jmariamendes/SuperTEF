@@ -20,7 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-# SECRET_KEY = 'django-insecure-$j8oc4ru^@*a*651w5qle=un=&mdwbxwcvujiu58#9*q%@&zp+'
+SECRET_KEY = 'django-insecure-$j8oc4ru^@*a*651w5qle=un=&mdwbxwcvujiu58#9*q%@&zp+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'servtef',
-    'rest_framework',
+    'rest_framework'
 ]
 
 MIDDLEWARE = [
@@ -153,5 +153,5 @@ DATE_INPUT_FORMATS = [
 ]
 
 # para deploy no heroku
-import django_heroku
-django_heroku.settings(locals())
+import django_on_heroku
+django_on_heroku.settings(locals())

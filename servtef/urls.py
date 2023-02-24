@@ -7,7 +7,7 @@ from . import apis
 app_name = "servtef"
 
 urlpatterns = [
-    path("login/", views.dashboard, name="dashboard"),
+    path("", views.dashboard, name="dashboard"),
     path("accounts/", include("django.contrib.auth.urls")),
     path("register/", views.register, name="register"),
     path("dadosadicionais/<int:pk>", views.dados_adicionais, name="dadosadicionais"),
@@ -44,7 +44,7 @@ urlpatterns = [
     # API´s disponíveis no sistema, via Django/REST
 
     path("api/v1/inicializaPDV", apis.InicializaPDV, name="inicializapdv"),  # inicialização de um PDV na loja
-    path("api/v1/login", apis.LoginUsuario, name="login"),  # Login de um usuário no PDV da loja
+    path("api/v1/entrar", apis.LoginUsuario, name="entrar"),  # Login de um usuário no PDV da loja
     path("api/v1/aberturaPDV", apis.AberturaPDV, name="aberturapdv"),  # abertura de um PDV na loja
     path("api/v1/dadostrans", apis.DadosTransacao, name="dadostrans"),  # consulta dados transação
     path("api/v1/vendacredito", apis.VendaCredito, name="vendacredito"),  # venda com cartão de crédito
