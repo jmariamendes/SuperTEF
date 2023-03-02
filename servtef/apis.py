@@ -1,7 +1,7 @@
 import datetime
 
-from rest_framework.decorators import api_view, parser_classes
-from rest_framework.parsers import BaseParser, JSONParser
+from rest_framework.decorators import api_view
+from rest_framework.parsers import BaseParser
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -16,7 +16,6 @@ from .JSON.json import DadosInicializaIn, DadosTransacaoIn, \
     DadosConfirmacao, DadosCancelamento, DadosLogin, DadosPesqLog
 
 from cryptography.fernet import Fernet
-import json
 
 from .rotauxiliares import RotinasAuxiliares
 
@@ -159,6 +158,7 @@ def LoginUsuario(request):
             e não checa usuário/loja. A senha não vem criptografada, pois ainda não existe a chave
             para criptografar. A chave será devolvida na mensagem
             Se o perfil for gerente de loja, ele poderá inicializar a loja
+            No caso de PDV Android, a inicialização será feita por PDV e não por loja
             """
         try:
             userTEF = models.UsuarioTEF.objects.get(user=user.id)
