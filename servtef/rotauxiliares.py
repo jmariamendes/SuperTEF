@@ -109,7 +109,8 @@ class RotinasAuxiliares():
         self.cod_loja = 0
         self.cod_pdv = 0
         self.usuario = ''
-        self.URL = f"http://localhost:5000/api/"
+        # self.URL = f"http://localhost:5000/api/"
+        self.URL = f"http://simadiq.herokuapp.com/api/"
 
     def setUp(self, LayOut):
         """ Verifica se a msg de entrada contém todos os campos obrigatórios """
