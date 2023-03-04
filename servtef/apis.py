@@ -436,11 +436,11 @@ def VendaCredito(request):
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     ''' Decriptografa o cartão '''
-    cartaoCriptoBytes = rotAux.buffer_entrada['numCartao'].encode()  # transforma o cartão recebido em bytes
+    '''cartaoCriptoBytes = rotAux.buffer_entrada['numCartao'].encode()  # transforma o cartão recebido em bytes
     cripto = Fernet(rotAux.lojaAtual.chave)
     cartao = cripto.decrypt(cartaoCriptoBytes)
     cartao = cartao.decode()
-    rotAux.buffer_entrada["numCartao"] = cartao
+    rotAux.buffer_entrada["numCartao"] = cartao'''
 
     if not rotAux.ValidaCartao():
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
