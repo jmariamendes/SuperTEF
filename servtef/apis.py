@@ -215,6 +215,8 @@ def LoginUsuario(request):
     rotAux.buffer_resposta['empresa'] = userTEF.empresa.codEmp
     rotAux.buffer_resposta['loja'] = userTEF.loja.codLoja
     rotAux.buffer_resposta['codPDV'] = rotAux.cod_pdv
+    rotAux.buffer_resposta['email'] = userTEF.empresa.endMail
+    rotAux.buffer_resposta['pass'] = userTEF.empresa.passMail
     return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
 

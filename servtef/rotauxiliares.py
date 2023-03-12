@@ -181,11 +181,6 @@ class RotinasAuxiliares():
             o return com o valor da variável. Isto foi colocado somente para deixar mais documentado. """
         return dicionario
 
-
-
-
-
-
     def MontaHeaderOut(self, codErro, mensagem):
         self.headerOut['codErro'] = codErro
         self.headerOut['mensagem'] = mensagem

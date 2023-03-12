@@ -12,6 +12,9 @@ class Empresa(models.Model):
     CNPJ = models.CharField(max_length=14)
     ultimoNSU = models.IntegerField(default=0)
     URLServer = models.URLField(null=True)
+    endMail = models.EmailField(null=True)
+    passMail = models.CharField(max_length=30, null=True)
+
 
 
 class Loja(models.Model):
