@@ -56,7 +56,7 @@ class RotinasAuxiliares():
                  'CredVista',
                  'CredParc',
                  'CredParcComJuros',
-                 'Debito'
+                 'Debito',
                  'DadosTrans',
                  'Confirma',
                  'Desfazimento',
