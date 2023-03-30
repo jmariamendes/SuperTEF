@@ -432,7 +432,7 @@ class RotinasAuxiliares():
                                                         valorTrans=self.buffer_envio_host["valorTrans"],
                                                         nomeBan=self.bandeira,
                                                         nomeAdiq=self.buffer_resposta['adquirente'],
-                                                        numParcelas=self.buffer_envio_host["numParcelas"]
+                                                        numParcelas=0
                                                         )
 
         log_trans.save()
