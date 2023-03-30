@@ -13,7 +13,8 @@ from . import models
 from .serializer import LogSerializer
 from .JSON.json import DadosInicializaIn, DadosTransacaoIn, \
     DadosAberturaIn, DadosVendaCreditoIn, \
-    DadosConfirmacao, DadosCancelamento, DadosLogin, DadosPesqLog
+    DadosConfirmacao, DadosCancelamento, DadosLogin,\
+    DadosPesqLog, DadosVendaDebitoIn
 
 from cryptography.fernet import Fernet
 
@@ -432,6 +433,120 @@ def VendaCredito(request):
     rotAux = RotinasAuxiliares(request.data)
 
     if not rotAux.setUp(DadosVendaCreditoIn):
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if not rotAux.ValidacoesBasicas():
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    ''' Decriptografa o cartão '''
+    cartaoCriptoBytes = rotAux.buffer_entrada['numCartao'].encode()  # transforma o cartão recebido em bytes
+    cripto = Fernet(rotAux.lojaAtual.chave)
+    cartao = cripto.decrypt(cartaoCriptoBytes)
+    cartao = cartao.decode()
+    rotAux.buffer_entrada["numCartao"] = cartao
+
+    if not rotAux.ValidaCartao():
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    bandeira = models.Bandeira.objects.get(nomeBan=rotAux.bandeira)
+
+    try:
+        roteamento = models.Roteamento.objects.get(empresa=rotAux.cod_empresa,
+                                                   loja=rotAux.cod_loja,
+                                                   bandeira=bandeira.id)
+    except models.Roteamento.DoesNotExist:
+        rotAux.MontaHeaderOut(12, f'Cartão inválido - não existe roteamento')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    try:
+        pdv = models.PDV.objects.get(empresa=rotAux.cod_empresa,
+                                     loja=rotAux.cod_loja,
+                                     codPDV=rotAux.cod_pdv)
+    except models.PDV.DoesNotExist:
+        rotAux.MontaHeaderOut(3, f'PDV {rotAux.cod_pdv} não existe para a loja {rotAux.cod_loja}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    dataAbertura = f"{pdv.LastLogin:%Y%m%d}"
+    dataAtual = f"{datetime.date.today():%Y%m%d}"
+    if dataAbertura != dataAtual:
+        rotAux.MontaHeaderOut(13, f'Execute a abertura do PDV')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    if pdv.UsuarioAtivo != rotAux.userAtual.id:
+        rotAux.MontaHeaderOut(7, f'PDV {rotAux.cod_pdv} já está aberto para usuário {rotAux.userAtual.id}')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    rotAux.MontaMsgHost(rotAux.buffer_entrada['headerIn']['transação'], roteamento.adiq)
+
+    if not rotAux.EnviaRecebeMsgHost(roteamento.adiq.nomeAdiq):  # erro de comunicação com a adquirente
+        # rotAux.MontaHeaderOut(0, f'Transação OK')
+        rotAux.buffer_resposta['codRespAdiq'] = 100
+        rotAux.buffer_resposta['msgAdiq'] = rotAux.TAB_MSG[100]
+        rotAux.buffer_resposta['bandeira'] = rotAux.bandeira
+        rotAux.buffer_resposta['adquirente'] = roteamento.adiq.nomeAdiq
+        rotAux.buffer_resposta['codAut'] = 0
+        rotAux.buffer_resposta['NSU_TEF'] = rotAux.buffer_envio_host["NSU_TEF"]
+        rotAux.buffer_resposta['NSU_HOST'] = 0
+        rotAux.buffer_resposta['dataHoraTrans'] = f'{datetime.datetime.now():%Y-%m-%d %H:%M:%S}'
+        rotAux.CriaLogTrans(rotAux.buffer_entrada['headerIn']['transação'], 'TimeOut')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+
+    rotAux.MontaHeaderOut(0, f'Transação OK')
+    rotAux.buffer_resposta['codRespAdiq'] = rotAux.buffer_receb_host['codRespAdiq']
+    rotAux.buffer_resposta['msgAdiq'] = rotAux.buffer_receb_host['msgResp']
+    rotAux.buffer_resposta['bandeira'] = rotAux.bandeira
+    rotAux.buffer_resposta['adquirente'] = roteamento.adiq.nomeAdiq
+    rotAux.buffer_resposta['codAut'] = rotAux.buffer_receb_host["codAutorizacao"]
+    rotAux.buffer_resposta['NSU_TEF'] = rotAux.buffer_receb_host["NSU_TEF"]
+    rotAux.buffer_resposta['NSU_HOST'] = rotAux.buffer_receb_host["NSU_HOST"]
+    rotAux.buffer_resposta['dataHoraTrans'] = rotAux.buffer_receb_host["dataHora"]
+    if int(rotAux.buffer_receb_host['codRespAdiq']) == 0:
+        rotAux.buffer_resposta['cupomTrans'] = rotAux.buffer_receb_host["comprovante"]
+        rotAux.CriaLogTrans(rotAux.buffer_entrada['headerIn']['transação'], 'Pendente')
+    else:
+        rotAux.CriaLogTrans(rotAux.buffer_entrada['headerIn']['transação'], 'Negada')
+
+    return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
+                    )
+
+@api_view(['PUT'])
+def VendaDebito(request):
+    """ Venda com cartão de débito
+
+        JSON de entrada:
+                    {
+                        "headerIn": {
+                                      "transação": "Debito",
+                                      "empresa": <inteiro>,
+                                      "loja": <inteiro>,
+                                      "pdv": <inteiro>,
+                                      "usuario": "operCentro",
+                        },
+                       "numCartao": "string de até 20 dígitos",
+                       "valorTrans": "número com 2 casas decimais",
+                       "senha": "senha"
+                    }
+
+        JSON de saída:
+            {
+                headerOut": {
+                              "codErro": <digit>,
+                              "mensagem": <string>,
+                             }
+                "codRespAdiq": <inteiro>
+                "msgAdiq": "string"
+                "bandeira": <string>
+                "adquirente": <string>
+                "codAut": <string>
+                "NSUTef": <inteiro>
+                "NSUHost": <inteiro>
+                "dataHoraTrans": <timestamp>
+                "cupomTrans": <string>
+            }
+    """
+    rotAux = RotinasAuxiliares(request.data)
+
+    if not rotAux.setUp(DadosVendaDebitoIn):
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     if not rotAux.ValidacoesBasicas():

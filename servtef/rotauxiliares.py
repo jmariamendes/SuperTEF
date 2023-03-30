@@ -288,16 +288,19 @@ class RotinasAuxiliares():
             empresa.save()
         self.buffer_envio_host["dataLocal"] = f'{datetime.date.today():%Y-%m-%d}'
         self.buffer_envio_host["horaLocal"] = f'{datetime.datetime.now():%H:%M:%S}'
-        self.buffer_envio_host["validadeCartao"] = self.buffer_entrada["validadeCartao"]
         self.buffer_envio_host["modoEntrada"] = 1 # cartao digitado
         self.buffer_envio_host["identPDV"] = self.cod_pdv
-        if CodTrans != "Cancelamento":
+        if CodTrans != "Cancelamento" and CodTrans != "Debito":
             self.buffer_envio_host["codSeg"] = self.buffer_entrada["codSeg"]
+            self.buffer_envio_host["validadeCartao"] = self.buffer_entrada["validadeCartao"]
             self.buffer_envio_host["numParcelas"] = self.buffer_entrada["numParcelas"]
-        else:
+        elif CodTrans == "Cancelamento":
             self.buffer_envio_host["numParcelas"] = 0
             self.buffer_envio_host["NSU_Original"] = self.buffer_entrada["NSU_Original"]
             self.buffer_envio_host["DataOriginal"] = self.buffer_entrada["dataOriginal"]
+        elif CodTrans == "Debito":
+            self.buffer_envio_host["numParcelas"] = 0
+            self.buffer_envio_host["senha"] = self.buffer_entrada["senha"]
 
         """ Lê o número lógico da empresa/loja, para a adquirente que irá capturar a transação
         """

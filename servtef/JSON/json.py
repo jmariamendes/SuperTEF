@@ -83,6 +83,19 @@ DadosVendaCreditoOut = {
     "cupomTrans": "comprovante",
 }
 
+DadosVendaDebitoIn = {
+    "headerIn": {
+        "transação": "Debito",
+        "empresa": 1,
+        "loja": 2,
+        "pdv": 2
+    },
+    "usuario": "operCentro",
+    "numCartao": "5536360607552502",
+    "valorTrans": 10.50,
+    "senha": "senha"
+}
+
 DadosConfirmacao = {
     "headerIn": {
         "transação": "Confirma/Desfazimento",

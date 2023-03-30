@@ -48,6 +48,7 @@ urlpatterns = [
     path("api/v1/aberturaPDV", apis.AberturaPDV, name="aberturapdv"),  # abertura de um PDV na loja
     path("api/v1/dadostrans", apis.DadosTransacao, name="dadostrans"),  # consulta dados transação
     path("api/v1/vendacredito", apis.VendaCredito, name="vendacredito"),  # venda com cartão de crédito
+    path("api/v1/vendadebito", apis.VendaDebito, name="vendadebito"),  # venda com cartão de débito
     path("api/v1/confirmadesfaz", apis.ConfirmaDesfazTrans, name="confirmadesfaz"),  # confirmação/desfazimento de transação
     path("api/v1/cancelamento", apis.Cancelamento, name="cancelamento"),  # cancelamento de transação
     path("api/v1/pesqtranslog", apis.PesqTransLog, name="pesqtranslog"),  # pesquisa transações no Log
