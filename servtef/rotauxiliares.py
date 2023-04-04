@@ -378,18 +378,16 @@ class RotinasAuxiliares():
         dados = self.buffer_envio_host
         try:
             response = requests.put(enderecoUrl, data=self.buffer_envio_host, timeout=30)
+            response.raise_for_status()
         except Timeout:
             self.MontaHeaderOut(100, f'{self.TAB_MSG[100]}')
             return False
         except HTTPError as http_err:
             self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {http_err}')
             return False
-        except Exception as err:
-            self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {err}')
-            return False
-
-        self.buffer_receb_host = response.json()
-        return True
+        else:
+            self.buffer_receb_host = response.json()
+            return True
 
     def CriaLogTrans(self, CodTrans, StatusTrans):
 
