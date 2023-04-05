@@ -13,7 +13,7 @@ from . import models
 from .serializer import LogSerializer
 from .JSON.json import DadosInicializaIn, DadosTransacaoIn, \
     DadosAberturaIn, DadosVendaCreditoIn, \
-    DadosConfirmacao, DadosCancelamento, DadosLogin,\
+    DadosConfirmacao, DadosCancelamento, DadosLogin, \
     DadosPesqLog, DadosVendaDebitoIn
 
 from cryptography.fernet import Fernet
@@ -33,9 +33,10 @@ class PlainTextParser(BaseParser):
         """
         Transforma as mensagens recebidas em bytes para string.
         """
-        msg = stream.read ()
+        msg = stream.read()
         msg = msg.decode()
         return msg
+
 
 @api_view(['PUT'])
 def InicializaPDV(request):
@@ -432,6 +433,8 @@ def VendaCredito(request):
     """
     rotAux = RotinasAuxiliares(request.data)
 
+    rotAux.Monitora('Testando Monitoração')
+
     if not rotAux.setUp(DadosVendaCreditoIn):
         return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
@@ -480,6 +483,7 @@ def VendaCredito(request):
 
     if not rotAux.EnviaRecebeMsgHost(roteamento.adiq.nomeAdiq):  # erro de comunicação com a adquirente
         # rotAux.MontaHeaderOut(0, f'Transação OK')
+        rotAux.Monitora(f'Venda Crédito - Erro comunicação simulador host')
         rotAux.buffer_resposta['codRespAdiq'] = 100
         rotAux.buffer_resposta['msgAdiq'] = rotAux.TAB_MSG[100]
         rotAux.buffer_resposta['bandeira'] = rotAux.bandeira
@@ -488,8 +492,13 @@ def VendaCredito(request):
         rotAux.buffer_resposta['NSU_TEF'] = rotAux.buffer_envio_host["NSU_TEF"]
         rotAux.buffer_resposta['NSU_HOST'] = 0
         rotAux.buffer_resposta['dataHoraTrans'] = f'{datetime.datetime.now():%Y-%m-%d %H:%M:%S}'
+        rotAux.Monitora(f'Venda Crédito - Vai gravar Log')
         rotAux.CriaLogTrans(rotAux.buffer_entrada['headerIn']['transação'], 'TimeOut')
-        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        rotAux.Monitora(f'Venda Crédito - Vai responder')
+        try:
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        except:
+            rotAux.Monitora(f'Erro no Response')
 
     rotAux.MontaHeaderOut(0, f'Transação OK')
     rotAux.buffer_resposta['codRespAdiq'] = rotAux.buffer_receb_host['codRespAdiq']
@@ -508,6 +517,7 @@ def VendaCredito(request):
 
     return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK
                     )
+
 
 @api_view(['PUT'])
 def VendaDebito(request):
@@ -666,7 +676,11 @@ def ConfirmaDesfazTrans(request):
     rotAux.MontaMsgConfDesfHost(rotAux.buffer_entrada['headerIn']['transação'], log)
 
     if not rotAux.EnviaRecebeMsgHost(log.nomeAdiq):
-        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        rotAux.Monitora(f'Confirma/Desfaz - Erro comunicação simulador host')
+        try:
+            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
+        except:
+            rotAux.Monitora(f'Confirma/Desfaz - Erro no Response')
 
     rotAux.MontaHeaderOut(0, f'Transação OK')
     rotAux.buffer_resposta['codRespAdiq'] = rotAux.buffer_receb_host['codRespAdiq']

@@ -155,3 +155,8 @@ class LogTrans(models.Model):
         )
 
 
+class Monitoracao(models.Model):
+    dataHora = models.DateTimeField()
+    mensagem = models.CharField(max_length=2000)
+
+
