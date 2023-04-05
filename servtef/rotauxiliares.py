@@ -378,7 +378,7 @@ class RotinasAuxiliares():
         dados = self.buffer_envio_host
         try:
             response = requests.put(enderecoUrl, data=self.buffer_envio_host, timeout=30)
-            # response.raise_for_status()
+            response.raise_for_status()
         except Timeout:
             self.Monitora(f'Timeout')
             self.MontaHeaderOut(100, f'{self.TAB_MSG[100]}')
