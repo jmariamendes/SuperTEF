@@ -388,7 +388,9 @@ class RotinasAuxiliares():
             self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {http_err}')
             return False
         else:
+            self.Monitora(f'Msg recebida')
             self.buffer_receb_host = response.json()
+            self.Monitora(f'Msg rec --> {self.buffer_receb_host}')
             return True
 
     def CriaLogTrans(self, CodTrans, StatusTrans):
