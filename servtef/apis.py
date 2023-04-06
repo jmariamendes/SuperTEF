@@ -496,9 +496,9 @@ def VendaCredito(request):
         rotAux.CriaLogTrans(rotAux.buffer_entrada['headerIn']['transação'], 'TimeOut')
         rotAux.Monitora(f'Venda Crédito - Vai responder')
         try:
-            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
-        except:
-            rotAux.Monitora(f'Erro no Response')
+            return Response(rotAux.buffer_resposta, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as err:
+            rotAux.Monitora(f'Erro no Response - {err}')
 
     rotAux.MontaHeaderOut(0, f'Transação OK')
     rotAux.buffer_resposta['codRespAdiq'] = rotAux.buffer_receb_host['codRespAdiq']
