@@ -376,13 +376,13 @@ class RotinasAuxiliares():
 
         enderecoUrl = f"{self.URL}v1/simuladiq/{Adquirente}"
         dados = self.buffer_envio_host
-        try:
-            response = requests.put(enderecoUrl, data=self.buffer_envio_host, timeout=30)
-            response.raise_for_status()
-        except Timeout:
+        response = requests.put(enderecoUrl, data=self.buffer_envio_host, timeout=30)
+        if requests.exceptions.Timeout:
             self.Monitora(f'Timeout')
             self.MontaHeaderOut(100, f'{self.TAB_MSG[100]}')
             return False
+        try:
+            response.raise_for_status()
         except HTTPError as http_err:
             self.Monitora(f'HTTPError - {http_err}')
             self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {http_err}')
