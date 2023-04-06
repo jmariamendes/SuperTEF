@@ -386,6 +386,7 @@ class RotinasAuxiliares():
         except HTTPError as http_err:
             self.Monitora(f'HTTPError - {http_err}')
             self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {http_err}')
+            response.raise_for_status()
             return False
         else:
             self.Monitora(f'Msg recebida')
