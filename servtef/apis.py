@@ -675,10 +675,7 @@ def ConfirmaDesfazTrans(request):
 
     if not rotAux.EnviaRecebeMsgHost(log.nomeAdiq):
         rotAux.Monitora(f'Confirma/Desfaz - Erro comunicação simulador host')
-        try:
-            return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
-        except:
-            rotAux.Monitora(f'Confirma/Desfaz - Erro no Response')
+        return Response(rotAux.buffer_resposta, status=status.HTTP_200_OK)
 
     rotAux.MontaHeaderOut(0, f'Transação OK')
     rotAux.buffer_resposta['codRespAdiq'] = rotAux.buffer_receb_host['codRespAdiq']
