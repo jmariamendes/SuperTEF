@@ -11,6 +11,7 @@ import json
 import requests
 from requests.exceptions import HTTPError
 from requests.exceptions import Timeout
+from rest_framework import status
 
 from . import models
 
@@ -388,10 +389,19 @@ class RotinasAuxiliares():
             self.MontaHeaderOut(99, f'{self.TAB_MSG[99]} - {err}')
             return False
         else:
-            self.Monitora(f'Msg recebida')
-            self.buffer_receb_host = response.json()
-            self.Monitora(f'Msg rec --> {self.buffer_receb_host}')
-            return True
+            ''' Em algumas situações de erro, o try não está funcionando,
+                então para não dar erro no acesso ao response.json, que vem vazio em situação de erro
+                estou testando também o status_code da mensagem antes de acessar os dados'''
+            if response.status_code == status.HTTP_200_OK:
+                self.Monitora(f'Msg recebida')
+                self.buffer_receb_host = response.json()
+                self.Monitora(f'Msg rec --> {self.buffer_receb_host}')
+                return True
+            else:
+                self.Monitora(f'Erro não esperado - {response.status_code}')
+                print(f'Erro não esperado - {response.status_code}')
+                self.MontaHeaderOut(100, f'{self.TAB_MSG[100]}')
+                return False
 
     def CriaLogTrans(self, CodTrans, StatusTrans):
 
