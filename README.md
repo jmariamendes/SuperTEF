@@ -25,7 +25,7 @@ Responsável por simular a captura da senha, para a realização de uma transaç
 ## 4. Servidor SuperTEF
 Está dividido em dois módulos: 
 ### 4.1 Site administrativo
-O site  foi desenvolvido em Python, Django e banco de dados Postgre, e possui administrações (cadastramento, alteração e deleção) para as seguintes principais entidades:
+O site  foi desenvolvido em Python, Django, HTML e banco de dados Postgre, e possui administrações (cadastramento, alteração e deleção) para as seguintes principais entidades:
 - Empresa
 - Loja
 - PDV
